@@ -1,0 +1,29 @@
+({
+    "exercise_categories": [{
+                        "hip_dominant" : 1,
+                        "knee_dominant": 2,
+                        "vertical_pull": 3,
+                        "vertical_push": 4,
+                        "horizontal_pull": 5,
+                        "horizontal_push": 6,
+                        "torso_rotational": 7,
+                        "torso_antiflexion": 8,
+                        "torso_anitextension": 9,
+                        "torso_antilateralflexion": 10
+        }],
+    "modifiers": [
+        "with": ["belt", "wraps", "single-ply", "multi-ply", "suit", "fatgrips", "straps" ],
+        "without":{},
+        "tempo":{}
+    ],
+    "exercises": [
+           "Comp SQ" : {
+                "categories": [ 2 : "heavy", 8 : "heavy"]
+           },
+           "Comp BP" :{
+                "categories": [ 6 : "heavy" ]
+           }
+        ]
+    }
+)
+
