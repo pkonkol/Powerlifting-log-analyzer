@@ -23,7 +23,19 @@
            "Comp BP" :{
                 "categories": [ 6 : "heavy" ]
            }
-        ]
+        ],
+    "workout_templates": [{
+                    "4_day_a_week" : {
+                                    "microcycle_length" : 7,
+                                    "days_training" : 4
+                    },
+                    "3_day_a_week": {
+                                    "microcycle_length": 7,
+                                    "days_training" : 3
+                    }
+
+
+    }]
     }
 )
 

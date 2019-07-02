@@ -1,5 +1,8 @@
+import sys
+sys.path.append('../')
+
 import unittest
-import opl
+import opl_spreadsheet_parser as opl
 
 class SetsDoneParsing(unittest.TestCase):
     correct_results = ( ('150@7', [{'reps': '', 'weight':150.0, 'RPE': 7.0, 'set_no': 1}]),
@@ -39,7 +42,7 @@ class SetsDoneParsing(unittest.TestCase):
 
 class SetsPlannedParsing(unittest.TestCase):
     correct_results = ( ('x8@9', [{ }]),
-                        ('3x5@80%'), [{ }]),
+                        ('3x5@80%'), [{ }],
             )
 
     def test_sets_planned_from_string(self):

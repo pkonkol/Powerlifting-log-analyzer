@@ -212,7 +212,6 @@ class Exercise:
                    '^ $': 'Sets x kilograms at RPE',
                    }
 
-
 class Workout:
     def __init__(self, day, date, exercises, length, notes):
         self.day = day
@@ -236,6 +235,9 @@ class Mesocycle:
         self.date_start = date_start
         self.date_end = date_end
         self.notes = notes
+
+class Bodyweight:
+    pass
 
 
 if __name__ == '__main__':
