@@ -26,15 +26,6 @@ class DataAnalzer():
     def calculate_wilks():
         pass
 
-    def caluclate_ipfpoints():
-        pass
-
-    def calculate_allometric():
-        pass
-
-    def calculate_modifier_effect():
-        pass
-
 
 class DataVisualizer():
 
