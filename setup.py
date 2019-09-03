@@ -16,7 +16,7 @@ setup(
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://www.opl.org/',
-    author='Petros Tararuj',
+    author='Piotr',
     author_email=' ',
     classifiers=[
         ' '

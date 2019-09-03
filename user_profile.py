@@ -1,5 +1,4 @@
 
-
 class Profile:
     self.available_workout_days = ''
     self.available_equipment = ''
