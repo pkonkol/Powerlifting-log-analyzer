@@ -1,7 +1,7 @@
 ({
-    "exercise_categories": [{
-                        "hip_dominant" : 1,
-                        "knee_dominant": 2,
+    "movement_patterns": [{
+                        "hip_extension" : 1,
+                        "knee_extension": 2,
                         "vertical_pull": 3,
                         "vertical_push": 4,
                         "horizontal_pull": 5,
@@ -11,19 +11,53 @@
                         "torso_anitextension": 9,
                         "torso_antilateralflexion": 10
         }],
-    "modifiers": [
+    "modifiers": {
         "with": ["belt", "wraps", "single-ply", "multi-ply", "suit", "fatgrips", "straps" ],
         "without":{},
         "tempo":{}
-    ],
-    "exercises": [
-           "Comp SQ" : {
-                "categories": [ 2 : "heavy", 8 : "heavy"]
+    },
+    "exercises": {
+           "SQ" : {
+                "movement_patterns": [ 2 : "heavy", 8 : "medium"],
+                "variations": [ "Pin", "Paused", "Box", "Comp", "DL Stance", "Front", "Lowbar", "Highbar",
+                                "SSB", "Anderson", "Bow", "Beltless", "Narrow Stance", "Wide Stance", "Suit"],
+                "names": ["SQ", "Squat"]
            },
-           "Comp BP" :{
-                "categories": [ 6 : "heavy" ]
+           "BP" :{
+                "movement_patterns": [ 6 : "heavy" ],
+                "variations": ["Comp", "Pin", "T&G", "Touch and Go", "TG", "(\d)ct", "Board", "CG",
+                               "Close Grip", "Wide Grip", "Band", "Floor", "SS", "Slingshot","Shirt",
+                               "Incline", "Decline", "DB"],
+                "names": ["BP", "Bench", "Bench Press"]
+           },
+           "DL" :{
+                "movement_patterns": [ 1 : "heavy", 2 : "light", 8 : "heavy"],
+                "variations": [ "Comp", "Rack", "Suit", "Paused", "Band", "Sumo", "Conventional", "Conv",
+                                "SL", "Stiffleg", "Deficit", "Block", "Rack"],
+                "names": ["DL", "Deadlift", "Pull"]
+           },
+           "OHP" :{
+                "movement_patterns": [ 4 : "heavy" ],
+                "variations": ["Standing", "Seated", "DB", "Paused", "Pin", "Push"],
+                "names": ["OHP", "Overhead Press", "Shoulder Press"]
+           },
+           "Row" : {
+                "movement_patterns": [ 5 : "heavy", 8 : "light" ],
+                "variations": ["Bent", "Woolam", "DB", "Cable", "Pendlay", "Power", "T-?bar", "Seal"],
+                "names": ["Row"]
+           },
+           "Vertical Pull" : {
+                "movement_patterns": [ 3 : "heavy" ],
+                "variations": ["Weighted", "Chin", "Supported", "Band"],
+                "names": ["Pullup", "Chinup", "Lat pulldown"]
+           },
+           "Torso antiextension" : {
+                "movement_patterns": [ 9 : "heavy" ],
+                "variations": ["Machine", "Weighted", "Negative"],
+                "names": ["Crunch", "Plank", "Dragon Flag", "Leg raise"]
            }
-        ],
+
+    },
     "workout_templates": [{
                     "4_day_a_week" : {
                                     "microcycle_length" : 7,
@@ -35,7 +69,16 @@
                     }
 
 
-    }]
-    }
-)
+    }],
+    "rpe_percentage_chart" :{
+                            "10" : [100, 95.5, 92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0],
+                            "9.5" : [97.8, 93.9, 90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7],
+                            "9" : [95.5, 92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0, 65.3],
+                            "8.5" : [93.9, 90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7, 64.0],
+                            "8" : [92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0, 65.3, 62.6],
+                            "7.5" : [90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7, 64.0, 61.3],
+                            "7" : [89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0, 65.3, 62.6, 59.9],
+                            "6.5" : [87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7, 64.0, 61.3, 58.6]
+                              }
+})
 
