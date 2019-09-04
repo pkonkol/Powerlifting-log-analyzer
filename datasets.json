@@ -18,41 +18,41 @@
     },
     "exercises": {
            "SQ" : {
-                "movement_patterns": [ 2 : "heavy", 8 : "medium"],
+                "movement_patterns": { 2 : "heavy", 8 : "medium"},
                 "variations": [ "Pin", "Paused", "Box", "Comp", "DL Stance", "Front", "Lowbar", "Highbar",
                                 "SSB", "Anderson", "Bow", "Beltless", "Narrow Stance", "Wide Stance", "Suit"],
                 "names": ["SQ", "Squat"]
            },
            "BP" :{
-                "movement_patterns": [ 6 : "heavy" ],
+                "movement_patterns": { 6 : "heavy" },
                 "variations": ["Comp", "Pin", "T&G", "Touch and Go", "TG", "(\d)ct", "Board", "CG",
                                "Close Grip", "Wide Grip", "Band", "Floor", "SS", "Slingshot","Shirt",
                                "Incline", "Decline", "DB"],
                 "names": ["BP", "Bench", "Bench Press"]
            },
            "DL" :{
-                "movement_patterns": [ 1 : "heavy", 2 : "light", 8 : "heavy"],
+                "movement_patterns": { 1 : "heavy", 2 : "light", 8 : "heavy"},
                 "variations": [ "Comp", "Rack", "Suit", "Paused", "Band", "Sumo", "Conventional", "Conv",
                                 "SL", "Stiffleg", "Deficit", "Block", "Rack"],
                 "names": ["DL", "Deadlift", "Pull"]
            },
            "OHP" :{
-                "movement_patterns": [ 4 : "heavy" ],
+                "movement_patterns": { 4 : "heavy" },
                 "variations": ["Standing", "Seated", "DB", "Paused", "Pin", "Push"],
                 "names": ["OHP", "Overhead Press", "Shoulder Press"]
            },
            "Row" : {
-                "movement_patterns": [ 5 : "heavy", 8 : "light" ],
+                "movement_patterns": { 5 : "heavy", 8 : "light" },
                 "variations": ["Bent", "Woolam", "DB", "Cable", "Pendlay", "Power", "T-?bar", "Seal"],
                 "names": ["Row"]
            },
            "Vertical Pull" : {
-                "movement_patterns": [ 3 : "heavy" ],
+                "movement_patterns": { 3 : "heavy" },
                 "variations": ["Weighted", "Chin", "Supported", "Band"],
                 "names": ["Pullup", "Chinup", "Lat pulldown"]
            },
            "Torso antiextension" : {
-                "movement_patterns": [ 9 : "heavy" ],
+                "movement_patterns": { 9 : "heavy" },
                 "variations": ["Machine", "Weighted", "Negative"],
                 "names": ["Crunch", "Plank", "Dragon Flag", "Leg raise"]
            }
