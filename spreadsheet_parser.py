@@ -1,6 +1,8 @@
 #import pandas as pd
+from utils import SheetCell
 from openpyxl import load_workbook
 import re
+import copy
 
 XSL_FILE = 'data/program.xlsx'
 UNITS = 'KG'
@@ -11,104 +13,111 @@ PERCENTAGE_SCHEME = '([1-9][0-9]?|100)'
 REPS_SCHEME = '([0-9]+)'
 SETS_SCHEME = '([0-9]+)'
 
-class TrainingSpreadsheetParser():
+class TrainingSpreadsheetParser:
 
-    def parse_worksheet():
-        pass
+    def __init__(self, file_dir):
+        self.mesocycles = []
+        self.wb = load_workbook(filename = file_dir)
+        self.ws = self.wb[self.wb.sheetnames[0]]
 
-    def parse_exercise(ws, col, row):
-        e = Exercise()
-        name = str(ws[col+row].value)
-        log = str(ws[chr(ord(col)+1) + row].value)
-        comment = str(ws[chr(ord(col)+1) + row].comment)
+    def parse_worksheet(self):
+        ws = self.ws
+        current_cell = SheetCell(1,1)
 
-        print(name + " :: " + log)
-        row = str(int(row)+1)
-        return w,col, row
+        cval = ws.cell(row=current_cell.row, column=current_cell.col).value
+        while cval != 'Sheet_end:':
+            #print(str(cval) + ' Mesocycle')
+            if isinstance(cval, str) and re.match("^Mesocycle:", cval):
+                m = self.parse_mesocycle(current_cell)
+                self.mesocycles.append(m)
 
-    def parse_workout(ws, start_col, start_row, lrow, day):
-        w = Workout()
-        col, row = start_col, start_row
-        date = str(ws[chr(ord(col)+1) + row].value)
-        print("Day " + day + " at date " + date)
+            current_cell.next_row()
+            cval = ws.cell(row=current_cell.row, column=current_cell.col).value
 
-        while int(row) < int(lrow):
-            col, row = parse_exercise(ws, col, row)
+    def parse_mesocycle(self, start_cell):
+        ws = self.ws
+        current_cell = copy.copy(start_cell)
+        date_range = self.ws.cell(row=current_cell.row, column=current_cell.col+1).value
+        name = re.sub('^Mesocycle:', '', self.ws.cell(
+                      row=current_cell.row, column=current_cell.col).value
+                     )
+        notes = ws.cell(row=current_cell.row, column=current_cell.col).comment
+        print(name)
 
-        col = chr(ord(col)+2)
-        row = start_row
-        return w, col, row
+        microcycles = []
 
-    def parse_microcycle(ws, start_col, start_row):
-        micro = Microcycle(0,0, [], "","")
-        frow, lrow = 0, 0
-        week = 0
-        nweek = 0
-        col, row = start_col, start_row
-        m = None
-        while not m:
-            m = re.match("^W([0-9]+)$", str(ws[col+row].value))
-            if m:
-                frow = row
-                week = m.group(1)
-                week_comment = ws[col+row].comment
-                print('week = ' + str(week))
+        cval = ws.cell(row=current_cell.row, column=current_cell.col).value
+        while cval != 'Mesocycle_end:':
+            if isinstance(cval, str) and re.match("^W(?:\d+)", cval):
+                print(cval + ' :Microcycle')
+                micro = self.parse_microcycle(current_cell)
+            #print("|{},-{},; week-{},nweek-{}".format(cur_col, cur_row, week, nweek))
+                microcycles.append(micro)
 
-                if int(week) == 0:
-                    return micro, start_col, lrow, week, nweek
+            current_cell.next_row()
+            cval = ws.cell(row=current_cell.row, column=current_cell.col).value
 
-                while True:
-                    row = str(int(row) + 1)
-                    m = re.match("^W([0-9]+)$", str(ws[col+row].value))
-                    if m:
-                        nweek = m.group(1)
-                        lrow = str(int(row) - 1)
-                        break
-                break
-            else:
-                row = str(int(row) + 1)
+        m = Mesocycle(microcycles, name, date_range, notes)
+        return m
 
-        col = chr(ord(col)+1)
-        print(col)
+    def parse_microcycle(self, start_cell):
+        ws = self.ws
+        current_cell = copy.copy(start_cell)
+        notes = ws.cell(row=current_cell.row, column=current_cell.col).comment
+        date = ws.cell(row=current_cell.row+1, column=current_cell.col)
+        workouts = []
 
-        row=start_row
-        m = re.match("^D([0-9]+)$", str(ws[col+row].value))
-        while m:
-            day = m.group(1)
-            day_comment = ws[col+row].comment
-            col, row = parse_workout(ws, col, row, lrow, day)
-            m = re.match("^D([0-9]+)$", str(ws[col+row].value))
-            print(m)
+        current_cell.next_col()
+        cval = ws.cell(row=current_cell.row, column=current_cell.col).value
+        while cval:
+            if isinstance(cval, str) and re.match("^D(?:\d+)", cval):
+                print(cval)
+                workout = self.parse_workout(current_cell)
+                workouts.append(workout)
 
-        print('micro ret: ' + lrow + ' ' + week)
-        return micro, start_col, str(int(lrow)+1), week, nweek
+            current_cell.next_col(); current_cell.next_col()
+            cval = ws.cell(row=current_cell.row, column=current_cell.col).value
 
-    def parse_mesocycle(ws, start_col, start_row):
-        cur_col, cur_row = start_col, start_row
-        meso = Mesocycle([], 0, 0, "")
+        m = Microcycle(date, workouts, '', notes)
+        return m
 
-        while True:
-            microcycle, cur_col, cur_row, week, nweek = parse_microcycle(ws, cur_col, cur_row)
-            print("|{},-{},; week-{},nweek-{}".format(cur_col, cur_row, week, nweek))
+    def parse_workout(self, current_cell):
+        ws = self.ws
+        current_cell = copy.copy(current_cell)
+        exercises = []
 
-            meso.microcycles.append(microcycle)
+        day = ws.cell(row=current_cell.row, column=current_cell.col).value
+        date_place = ws.cell(row=current_cell.row, column=current_cell.col+1).value
+        notes = ws.cell(row=current_cell.row, column=current_cell.col).comment
 
-            print(nweek)
-            if nweek == 0:
-                break
+        cval = ws.cell(row=current_cell.row, column=current_cell.col).value
+        while cval != None:
+            print(cval)
+            planned_str = ws.cell(row=current_cell.row, column=current_cell.col).value
+            done_str = ws.cell(row=current_cell.row, column=current_cell.col+1).value
+            notes = ws.cell(row=current_cell.row, column=current_cell.col).comment
+            e = Exercise(planned_str, done_str, notes)
+            exercises.append(e)
 
-        return ":)"
+            current_cell.next_row()
+            cval = ws.cell(row=current_cell.row, column=current_cell.col).value
+
+
+        w = Workout(day, date_place, exercises, notes)
+
+        return w
 
 
 class Exercise:
-    def __init__(self, note=''):
+    def __init__(self, planned_str, done_str, notes):
         self.name = ''
         self.modifiers = []
         self.sets_planned = []
         self.sets_done = []
-        self.note = note
+        self.notes = notes
         self.workset_volume = 0
         self.is_superset = False
+        self.done = True
 
     def workout_from_string(self, first_col_str, second_col_str): # First column contains exercise with modifiers and planned sets, second column contains done sets
         exercise_str, planned_str = first_col.split(':')
@@ -141,6 +150,7 @@ class Exercise:
                    '^([0-9]+)@(([1-9],[5])|([1-9]|10))$': 2, #'weight at RPE (presumed same set number as planned)',
                    '^{weight}(?:@{rpe}){{2,}}$'.format(weight=WEIGHT_SCHEME, rpe= RPE_SCHEME): 3, #Multiple Weight@Rpe sets written in one string
                    '^{weight}x{reps}(?:@{rpe}){{2,}}$'.format(weight=WEIGHT_SCHEME,reps=REPS_SCHEME, rpe= RPE_SCHEME): 4, #Multiple WeightXReps@Rpe sets written in one string
+                   '^X$': 5 # exercise not done
                    }
 
         sets_str = re.split(' |;', sets_str)
@@ -198,6 +208,8 @@ class Exercise:
                     c_set['set_no'] = set_no
                     set_no += 1
                     sets_done.append(c_set)
+            elif match[1] == 5:
+                self.done = False
 
         return sets_done
 
@@ -305,41 +317,55 @@ class Exercise:
                 set_no += 1
                 sets_done.append(c_set)
 
+    def print(self):
+        pass
 
 class Workout:
-    def __init__(self, day, date, exercises, length, notes):
+    def __init__(self, day, date_place, exercises, notes):
         self.day = day
-        self.date = date
+        self.date = date_place
+        self.place = date_place
         self.exercises = exercises
-        self.length = length
-        self.note = note
+        self.notes = notes
 
+    def print(self):
+        pass
 
 class Microcycle:
-    def __init__(self, date_start, date_end, workouts, drugs, notes):
-        self.length = date_end - date_start
-        self.date_s = date_start
-        self.date_e = date_end
+    def __init__(self, date, workouts, drugs, notes):
+        self.length = date #TODO
+        self.date_start, self.date_end = self.parse_date(date)
         self.workouts = workouts
         self.drugs = drugs
         self.notes = notes
 
+    def parse_date(self,date_str):
+        #TODO
+        date_start = date_str
+        date_end = date_str
+        return date_start, date_end
+
+    def print(self):
+        pass
 
 class Mesocycle:
-    def __init__(self, microcycles, date_start, date_end, notes):
+    def __init__(self,name, microcycles, date_range, notes):
+        self.name = name
         self.microcycles = microcycles
-        self.date_start = date_start
-        self.date_end = date_end
+        self.date_start = date_range
+        self.date_end = date_range
         self.notes = notes
+
+    def print(self):
+        pass
 
 class Bodyweight:
     pass
 
-
 if __name__ == '__main__':
-    wb = load_workbook(filename = XSL_FILE)
-    ws = wb['program']
+    #wb = load_workbook(filename = XSL_FILE)
+    #ws = wb['program']
 
-    tsp = TrainingSpreadsheetParser()
-    tsp.parse_mesocycle(ws, 'A', '1')
+    tsp = TrainingSpreadsheetParser(XSL_FILE)
+    tsp.parse_worksheet()
 
