@@ -43,9 +43,13 @@ def calculate_aas(weight_lifted, bodyweight, sex):
     pass
 
 def calculate_e1RM(weight, reps, rpe_str):
-    if weight and reps != ''  and rpe_str > 6.0:
-        print('weight: ' + str(weight)+ str(type(weight)) + ' reps: ' + str(reps) + str(type(reps)) + ' rpe: ' + str(rpe_str) + str(type(rpe_str)))
-        return 100*weight/DATA['rpe_percentage_chart'][str(rpe_str)][int(reps-1)]
+    if rpe_str == '':
+        rpe = 10.0
+    else:
+        rpe = rpe_str
+    if weight and reps != ''  and rpe > 6.0:
+        print('weight: ' + str(weight) + str(type(weight)) + ' reps: ' + str(reps) + str(type(reps)) + ' rpe: ' + str(rpe) + str(type(rpe)))
+        return 100*weight/DATA['rpe_percentage_chart'][str(rpe)][int(reps-1)]
     else:
         return 0
 

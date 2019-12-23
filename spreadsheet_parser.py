@@ -4,6 +4,7 @@ from openpyxl import load_workbook
 import copy
 import datetime
 import json
+import logging
 import re
 
 XSL_FILE = 'data/program.xlsx'
@@ -45,11 +46,11 @@ class TrainingSpreadsheetParser:
     def parse_mesocycle(self, start_cell):
         ws = self.ws
         current_cell = copy.copy(start_cell)
+        notes = ws.cell(row=current_cell.row, column=current_cell.col).comment
         date_range = self.ws.cell(row=current_cell.row, column=current_cell.col+1).value
         name = re.sub('^Mesocycle:', '', self.ws.cell(
                       row=current_cell.row, column=current_cell.col).value
                      )
-        notes = ws.cell(row=current_cell.row, column=current_cell.col).comment
         print(name)
 
         microcycles = []
@@ -123,10 +124,10 @@ class TrainingSpreadsheetParser:
 class Exercise:
     def __init__(self, planned_str, done_str, notes):
         self.done = True
+        self.is_superset = False
         self.workout_from_string(planned_str, done_str)
         self.notes = notes
         self.workset_volume = 0
-        self.is_superset = False
         self.categories = {}
         if self.done:
             self.e1RM = self.get_e1RM()
@@ -135,12 +136,32 @@ class Exercise:
 
     def get_e1RM(self):
         print([ws for ws in self.sets_done])
+        print(self.is_superset)
+        if self.is_superset:
+            return 0
         x = max([calculate_e1RM(ws['weight'], ws['reps'], ws['RPE']) for ws in self.sets_done])
         return x
 
     def workout_from_string(self, first_col_str, second_col_str): # First column contains exercise with modifiers and planned sets, second column contains done sets
         print('first_col_str: ' + first_col_str)
         exercise_str, planned_str = first_col_str.split(':')
+        if '&' in exercise_str:
+            self.is_superset = True
+            exercise_strs = exercise_str.split('&')
+            planned_strs = planned_str.split('&')
+            second_col_strs = second_col_str.split('&')
+            second_col_strs = [s.strip() for s in second_col_strs]
+
+            self.name, self.modifiers, self.sets_planned, self.sets_done = [],[],[],[]
+            for e_str, p_str, s_c_str in zip(exercise_strs, planned_strs, second_col_strs):
+                name, modifiers = self.exercise_from_string(e_str)
+                self.name.append(e_str)
+                self.modifiers.append(modifiers)
+                self.sets_planned.append(self.sets_planned_from_string(p_str))
+                self.sets_done.append(self.sets_done_from_string(s_c_str))
+                breakpoint()
+            return
+
         self.name, self.modifiers = self.exercise_from_string(exercise_str)
         self.sets_planned = self.sets_planned_from_string(planned_str)
         self.sets_done = self.sets_done_from_string(second_col_str)
@@ -172,7 +193,8 @@ class Exercise:
                    '^([0-9]+)@(([1-9],[5])|([1-9]|10))$': 2, #'weight at RPE (presumed same set number as planned)',
                    '^{weight}((?:@{rpe}){{2,}})$'.format(weight=WEIGHT_SCHEME, rpe= RPE_SCHEME): 3, #Multiple Weight@Rpe sets written in one string
                    '^{weight}x{reps}((?:@{rpe}){{2,}})$'.format(weight=WEIGHT_SCHEME,reps=REPS_SCHEME, rpe= RPE_SCHEME): 4, #Multiple WeightXReps@Rpe sets written in one string
-                   '^X$': 5 # exercise not done
+                   '^{sets}x{reps}/{weight}$'.format(weight=WEIGHT_SCHEME, reps=REPS_SCHEME, sets=SETS_SCHEME): 5,
+                   '^X$': 6 # exercise not done
                    }
 
         sets_str = re.split(' |;', sets_str)
@@ -206,10 +228,8 @@ class Exercise:
                 set_no += 1
                 sets_done.append(c_set)
             elif match[1] == 3:
-                print('match[1]==3')
                 multiset_weight = float(match[0].group(1).replace(',','.'))
                 multiset_rpe_list = match[0].group(0).split('@')[1:]
-                print('multiset_rpe_list: ' + str(multiset_rpe_list))
                 for rpe in multiset_rpe_list:
                     c_set = {'reps': '', 'weight':'', 'RPE': '', 'set_no': ''}
                     c_set['weight'] = multiset_weight
@@ -218,13 +238,9 @@ class Exercise:
                     set_no += 1
                     sets_done.append(c_set)
             elif match[1] == 4:
-                print('match[1]==4')
-                print(match[0].group(1))
                 multiset_weight = float(match[0].group(1).replace(',','.'))
                 multiset_reps = match[0].group(3).replace(',', '.')
                 multiset_rpe_list = match[0].group(4).split('@')[1:]
-                print(multiset_rpe_list)
-                print(multiset_reps)
                 for rpe in multiset_rpe_list:
                     c_set = {'reps': '', 'weight':'', 'RPE': '', 'set_no': ''}
                     c_set['weight'] = multiset_weight
@@ -234,6 +250,17 @@ class Exercise:
                     set_no += 1
                     sets_done.append(c_set)
             elif match[1] == 5:
+                sets = int(match[0].group(1))
+                multiset_reps = int(match[0].group(2))
+                multiset_weight = float(match[0].group(3))
+                for _ in range(0, sets):
+                    c_set = {'reps': '', 'weight':'', 'RPE': '', 'set_no': ''}
+                    c_set['weight'] = multiset_weight
+                    c_set['reps'] = multiset_reps
+                    c_set['set_no'] = set_no
+                    set_no += 1
+                    sets_done.append(c_set)
+            elif match[1] == 6:
                 self.done = False
 
         return sets_done
@@ -250,6 +277,7 @@ class Exercise:
                    '^{percentage}%x{reps}$'.format(percentage=PERCENTAGE_SCHEME, reps=REPS_SCHEME): 7, #'reps at %1RM',
                    '^{sets}x{reps}@{percentage}%$'.format(sets=SETS_SCHEME, reps=REPS_SCHEME, percentage=PERCENTAGE_SCHEME): 8, #'sets of reps at percentage',
                    '^{sets}x{weight}@{rpe}$'.format(sets=SETS_SCHEME, weight=WEIGHT_SCHEME, rpe=RPE_SCHEME) : 9, #'Sets x weight at RPE',
+                   '^{sets}x{reps}$'.format(sets=SETS_SCHEME, reps=REPS_SCHEME):10,# 'sets of reps starting at RPE',
                    }
 
         sets_planned_str = sets_planned_str.strip()
@@ -346,6 +374,16 @@ class Exercise:
                     c_set['set_no'] = set_no
                     set_no += 1
                     sets_planned.append(c_set)
+            elif match[1] == 10:
+                multiset_sets = int(match[0].group(1).replace(',', '.'))
+                multiset_reps = int(match[0].group(2).replace(',', '.'))
+                for _ in range(0,multiset_sets):
+                    c_set = {'reps': '', 'weight':'', 'RPE': '', 'set_no': ''}
+                    c_set['reps'] = multiset_reps
+                    c_set['set_no'] = set_no
+                    set_no += 1
+                    sets_planned.append(c_set)
+
 
         return sets_planned
 
@@ -354,16 +392,28 @@ class Exercise:
         #json.
         pass
 
-    def calculate_volume(self):
-        pass
+    def volume(self):
+        vol = 0.0
+        if not self.is_superset:
+            for s in self.sets_done:
+                vol += s['reps']*s['weight']
+            return vol
 
     def str(self):
-        sets_done = ["{}x{}@{}".format(s['weight'], s['reps'], s['RPE']) for s in self.sets_done]
+        if self.is_superset:
+            print('if_superset')
+            print(self.name)
+            return ("&".join(self.name), 0)
+        if self.done:
+            sets_done = ["{}x{}@{}".format(s['weight'], s['reps'], s['RPE']) for s in self.sets_done]
+        else:
+            sets_done = "X"
         sets_planned = ["{}x{}@{}".format(s['weight'], s['reps'], s['RPE']) for s in self.sets_planned]
         e1RM = self.e1RM if self.e1RM else 0.0
         return ("{}: {} | {}  ".format(self.name,
-                                ";".join(sets_planned),";".join(sets_done)),
-                e1RM)
+                                       ";".join(sets_planned),
+                                       ";".join(sets_done)),
+                                e1RM)
 
 class Workout:
     def __init__(self, day, date_place, exercises, notes):
@@ -374,7 +424,13 @@ class Workout:
         self.notes = notes
 
     def calculate_volume(self):
-        pass
+        vol = 0.0
+        for e in self.exercises:
+            vol += e.volume()
+        return vol
+
+    def parse_date_place(self, date_place_str):
+        date, place = date_place_str.split('@')
 
     def str(self):
         return [e.str() for e in self.exercises]
@@ -413,6 +469,13 @@ class Mesocycle:
         return "Name: {}, Date:{}-{}, Length: {}, Notes: {}".format(
                 self.name, self.date_start, self.date_end,
                 len(self.microcycles), self.notes)
+
+class ExerciseCategory:
+    def __init__(self):
+        DATASETS = 'datasets.json'
+        with open(DATASETS, 'r') as ds:
+            self.data = json.load(ds)
+
 
 class Bodyweight:
     pass
