@@ -4,7 +4,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 
 import unittest
-import opl_spreadsheet_parser as opl
+import spreadsheet_parser as sp
 
 class SetsDoneParsing(unittest.TestCase):
     correct_results = ( ('150@7', [{'reps': '', 'weight':150.0, 'RPE': 7.0, 'set_no': 1}]),
@@ -36,19 +36,26 @@ class SetsDoneParsing(unittest.TestCase):
                       )
 
     def test_sets_done_from_string(self):
-        e = opl.Exercise()
+        e = sp.Exercise()
         for sets_str, output_dict in self.correct_results:
             result = e.sets_done_from_string(sets_str)
             print('test_sets_done_from_string: {}'.format(result))
             self.assertEqual(result, output_dict, msg='{}, {}'.format(result, output_dict))
 
 class SetsPlannedParsing(unittest.TestCase):
-    correct_results = ( ('x8@9', [{ }]),
-                        ('3x5@80%'), [{ }],
+    correct_results = ( ('x8@9', [{'reps': 8, 'weight': None, 'RPE': 9.0, 'set_no': 1}]),
+                        ('2x5V80%', [{'reps': 5, 'weight': None, 'RPE': None, 'set_no': 1},
+                                     {'reps': 5, 'weight': None, 'RPE': None, 'set_no': 2},
+                                    ])
+
             )
 
     def test_sets_planned_from_string(self):
-        pass
+        e = sp.Exercise()
+        for sets_str, output_dict in self.correct_results:
+            result = e.sets_planned_from_string(sets_str)
+            print(f'test_sets_planned_from_string: {}')
+            self.assertEqual(result, output_dict, msg=f'{result}, {output_dict}')
 
 if __name__ == '__main__':
     unittest.main()

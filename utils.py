@@ -30,8 +30,8 @@ class SheetCell:
 def kg_to_lbs(kg):
     return roundWithBias(kg*2.204)
 
-def lbs_to_kg(kg):
-    return roundWithBias(kg/2.204)
+def lbs_to_kg(lbs):
+    return roundWithBias(lbs/2.204)
 
 def calculate_wilks(weight_lifted, bodyweight, sex):
     pass
@@ -43,13 +43,11 @@ def calculate_aas(weight_lifted, bodyweight, sex):
     pass
 
 def calculate_e1RM(weight, reps, rpe_str):
-    if rpe_str == '':
+    if rpe_str == None:
         rpe = 10.0
     else:
         rpe = rpe_str
-    if weight and reps != ''  and rpe > 6.0:
-        print('weight: ' + str(weight) + str(type(weight)) + ' reps: ' + str(reps) + str(type(reps)) + ' rpe: ' + str(rpe) + str(type(rpe)))
+    if weight and reps and rpe >= 6.0:
         return 100*weight/DATA['rpe_percentage_chart'][str(rpe)][int(reps-1)]
     else:
         return 0
-
