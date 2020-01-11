@@ -1,3 +1,5 @@
+from collections import namedtuple
+from enum import Enum
 from utils import SheetCell, calculate_e1RM
 from openpyxl import load_workbook
 import copy
@@ -6,13 +8,20 @@ import json
 import logging
 import re
 
-RPE_SCHEME = '(?P<rpe>(?:[1-9](?:,|\.)[5])|(?:[1-9]|10))'
+MATCH_PLANNED_TO_DONE = False
+
+RPE_SCHEME = '(?P<rpe>(?:[1-9](?:,|\.)[5])|(?:[1-9]|10)|(?:9\.\(3\)|9\.3|9\.\(6\)|9\.6))'
 RPE_MULTISET_SCHEME = f'(?P<multi_rpe>(?:@{RPE_SCHEME}){{2,}})'
 WEIGHT_SCHEME = '(?:(?P<weight>[0-9]+(?:\.[0-9]{1,3})?)' \
                 '(?i)(?P<unit>kg|lbs)?|(?P<bw>BW))'
 PERCENTAGE_SCHEME = '(?P<percentage>[1-9][0-9]?|100)'
 REPS_SCHEME = '(?P<reps>[0-9]+)'
 SETS_SCHEME = '(?P<sets>[0-9]+)'
+
+class WeightUnit(Enum):
+    KG = 1
+    LBS = 2
+    BW = 3
 
 logging.basicConfig(filename='pla.log',
     format='%(levelname)s:%(name)s:%(lineno)s  %(message)s',
@@ -124,39 +133,71 @@ class TrainingSpreadsheetParser:
             current_cell.next_row()
             cval = ws.cell(row=current_cell.row, column=current_cell.col).value
 
-
         w = Workout(day, date_place, exercises, notes)
-
         return w
 
 
 class Exercise:
-    def __init__(self, planned_str, done_str, notes):
-        self.schemes_planned = (re.compile(f'^x{REPS_SCHEME}@{RPE_SCHEME}$'), # REPS at RPE
-            re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$'), # SETS of REPS at PERCENTAGE
-            re.compile(f'^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$'), # PERCENTAGE at RPE
-            re.compile(f'^x{REPS_SCHEME}(?:@{RPE_SCHEME}){{2,}}$'), # REPS at RPE multiple #needs furhter processing
-            re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}@{RPE_SCHEME}$'),# SETS of REPS starting at RPE
-            re.compile(f'^{SETS_SCHEME}x@{RPE_SCHEME}$'), # number of SETS at RPE
-            re.compile(f'^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$'), # REPS at %1RM
-            re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$'), # SETS of REPS at PERCENTAGE
-            re.compile(f'^{SETS_SCHEME}x{WEIGHT_SCHEME}@{RPE_SCHEME}$'), # SETS x WEIGHT at RPE
-            re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}$'),# SETS of REPS starting at RPE
+    class SetType(Enum):
+        NONE = -1
+        RPE = 0
+        WEIGHT = 1
+        PERCENT1RM = 2
+        LOAD_DROP = 3
+        FATIGUE_PERCENT = 4
+        RPE_RAMP = 5
+
+    DefaultUnit = WeightUnit.KG
+    Weight = namedtuple('Weight', ('value', 'unit',))
+    Set =  namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
+    schemes_planned = (
+            (re.compile(f'^x{REPS_SCHEME}@{RPE_SCHEME}$'), SetType.RPE), # REPS at RPE
+            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$'),
+                SetType.PERCENT1RM),# SETS of REPS at PERCENTAGE
+            (re.compile(f'^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$'), # PERCENTAGE at RPE
+                SetType.PERCENT1RM),
+            (re.compile(f'^x{REPS_SCHEME}(?:@{RPE_SCHEME}){{2,}}$'), # REPS at RPE multiple #needs furhter processing
+                SetType.RPE),
+            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}^@{RPE_SCHEME}$'),# SETS of REPS starting at RPE
+                SetType.RPE),
+            (re.compile(f'^{SETS_SCHEME}x@{RPE_SCHEME}$'), # number of SETS at RPE
+                SetType.RPE),
+            (re.compile(f'^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$'), # REPS at %1RM
+                SetType.PERCENT1RM),
+            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}V{PERCENTAGE_SCHEME}%$'), # SETS of REPS at PERCENTAGE
+                SetType.LOAD_DROP),
+            (re.compile(f'^{SETS_SCHEME}x{WEIGHT_SCHEME}@{RPE_SCHEME}$'), # SETS x WEIGHT at RPE
+                SetType.WEIGHT),
+            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}$'),# SETS of REPS starting at RPE
+                SetType.WEIGHT),
+            )
+    schemes_done = (
+            (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}@{RPE_SCHEME}$'),#weightXreps at RPE
+                SetType.WEIGHT),
+            (re.compile(f'^{WEIGHT_SCHEME}@{RPE_SCHEME}$'), #'weight at RPE (presumed same set number as planned)',
+                SetType.WEIGHT),
+            (re.compile(f'^{WEIGHT_SCHEME}{RPE_MULTISET_SCHEME}$'), #Multiple Weight@Rpe sets written in one string
+                SetType.WEIGHT),
+            (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}' \
+                       f'{RPE_MULTISET_SCHEME}$'), #Multiple WeightXReps@Rpe sets written in one string
+                SetType.WEIGHT),
+            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}' \
+                       f'(?:\/|x|@){WEIGHT_SCHEME}$'),
+                SetType.WEIGHT),
+            (re.compile('^ *X *$'), # exercise not done
+                SetType.NONE),
+            (re.compile('^ *V *$'),
+                SetType.NONE),
+            (re.compile(f'^(?:{REPS_SCHEME}(?:,|@))+{WEIGHT_SCHEME}$'), #Multiple sets at given weight
+                SetType.WEIGHT),
+            (re.compile(f'^{REPS_SCHEME}x{WEIGHT_SCHEME}$'), #Reps at weight
+                SetType.WEIGHT),
             )
 
-        self.schemes_done = (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}' \
-                                        f'@{RPE_SCHEME}$'),#weightXreps at RPE
-            re.compile(f'^{WEIGHT_SCHEME}@{RPE_SCHEME}$'), #'weight at RPE (presumed same set number as planned)',
-            re.compile(f'^{WEIGHT_SCHEME}{RPE_MULTISET_SCHEME}$'), #Multiple Weight@Rpe sets written in one string
-            re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}' \
-                       f'{RPE_MULTISET_SCHEME}$'), #Multiple WeightXReps@Rpe sets written in one string
-            re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}' \
-                       f'(?:\/|x|@){WEIGHT_SCHEME}$'),
-            re.compile('^ *X *$'), # exercise not done
-            re.compile('^ *V *$'),
-            re.compile(f'^(?:{REPS_SCHEME}(?:,|@))+{WEIGHT_SCHEME}$'), #Multiple sets at given weight
-            re.compile(f'^{REPS_SCHEME}x{WEIGHT_SCHEME}$'), #Reps at weight
-            )
+
+    def __init__(self, planned_str, done_str, notes):
+        logger.debug(self.SetType.RPE)
+        logger.debug(self.SetType)
 
         self.done = True
         self.is_superset = False
@@ -236,10 +277,10 @@ class Exercise:
         for set_str in sets_str:
             while True:
                 try:
-                    match = [(pattern.match(set_str), index+1)
+                    match = [(pattern[0].match(set_str), index+1)
                                 for index, pattern
                                 in enumerate(schemes)
-                                if pattern.match(set_str)][0]
+                                if pattern[0].match(set_str)][0]
                 except IndexError as e:
                     breakpoint()
                     logging.exception(e)
@@ -328,10 +369,10 @@ class Exercise:
         for set_str in sets_str:
             while True:
                 try:
-                    match = [(pattern.match(set_str), index+1)
+                    match = [(pattern[0].match(set_str), index+1)
                                 for index, pattern
                                 in enumerate(schemes)
-                                if pattern.match(set_str)][0]
+                                if pattern[0].match(set_str)][0]
                 except IndexError as e:
                     logging.exception(e)
                     print('Failed to match set with any of schemes')
@@ -466,15 +507,11 @@ class Exercise:
             weight=float(match[0].group('weight').replace(',', '.')),
 
 
-    def set_into_dict(self, reps=None, rpe=None, weight=None, set_no=0):
-        c_set = {
-            'reps' : reps,
-            'RPE' : rpe,
-            'weight' : weight,
-            'set_no' : set_no
-        }
-        set_no += 1
-        return c_set
+    def set_into_dict(self, reps=None, rpe=None, weight=None, unit=None, set_no=0):
+        Weight, Set = self.Weight, self.Set #namedtuple('Weight', ('value', 'unit',))
+        #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
+        cnt_set = Set(self.SetType.RPE, reps, Weight(weight, unit), rpe)
+        return cnt_set
 
     def match_sets_planned_done(self):
         pass

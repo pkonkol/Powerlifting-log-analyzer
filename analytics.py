@@ -8,7 +8,7 @@ e1RM progress graph, volume progress graph
 
 '''
 
-class DataAnalzer():
+class DataAnalyzer():
 
     def calculate_total_volume():
         pass
@@ -30,6 +30,11 @@ class DataAnalzer():
 
     def calculate_modifier_effect():
         pass
+
+    def calculate_stress_index(exercise):
+        si_mod = (0.5, 0.667, 0.8, 1, 1.333)
+
+        #[si_mod[rpe] for s in sets if rpe]
 
 
 class DataVisualizer():
