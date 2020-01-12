@@ -82,11 +82,13 @@ class SetsPlannedParsing(unittest.TestCase):
             logger.info(f'test_sets_planned_from_string: {result}')
             self.assertEqual(result, output_dict, msg=f'{result}, {output_dict}')
 
+
 class E1rmCalcTest(unittest.TestCase):
     correct_results = ()
 
     def test_e1rm_calc(self):
         pass
+
 
 if __name__ == '__main__':
     unittest.main()
