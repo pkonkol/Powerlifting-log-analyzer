@@ -33,8 +33,14 @@ class DataAnalyzer():
 
     def calculate_stress_index(exercise):
         si_mod = (0.5, 0.667, 0.8, 1, 1.333)
+        rpe = 9
+        stress_index = 0
+        if rpe <= 10 and rpe > 9:
+            stress_index += 1.333
+        #[si[9.3]
 
         #[si_mod[rpe] for s in sets if rpe]
+        return stress_index
 
 
 class DataVisualizer():
