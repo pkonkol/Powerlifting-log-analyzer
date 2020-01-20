@@ -48,7 +48,7 @@ Scheme | Example | Description
 `x<reps>@<rpe>` | x5@9 | Reps at RPE
 `x<reps>(@<rpe>)+` | x5@7@8@9 | Multiple sets x same amount of reps, in one string
 `<sets>x<reps>^@<rpe>` | 3x5^@7 | Sets x reps, first set on given RPE
-`x<reps>$@<rpe>` | x6^@9 | Ramp up until you reach set of 6 reps @9
+`x<reps>$@<rpe>` | x6$@9 | Ramp up until you reach set of 6 reps @9
 `<sets>x<reps>V<load_drop>` | 3x5V90% | Sets x reps at percentage of weight from last set (load drop)
 `x<reps>@<rpe>-<percent_fatigue>%` | x5@9-7% | Fatigue percentage - after main set at given RPE drop weight by given percents and repeat until rpe the same as main set
 `<sets>x@<rpe>` | 4x@9 | Sets at RPE, reps vary by each set

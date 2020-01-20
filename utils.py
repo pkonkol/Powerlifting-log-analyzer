@@ -1,6 +1,8 @@
 import json
 import math
 
+from collections import Counter
+
 
 DATASETS = 'datasets.json'
 with open(DATASETS, 'r') as ds:
@@ -51,3 +53,12 @@ def calculate_e1RM(weight, reps, rpe_str):
         return 100*weight/DATA['rpe_percentage_chart'][str(rpe)][int(reps-1)]
     else:
         return 0
+
+def calculate_plate_order(available_plates: Counter,
+                          bar_weight: float, goal_weight: float) -> tuple:
+    #TODO
+    return plate_order
+
+def print_plate_order(plate_order: tuple) -> None:
+    #TODO
+    return

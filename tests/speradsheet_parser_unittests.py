@@ -32,8 +32,8 @@ class SetsDoneParsing(unittest.TestCase):
         ('2x8x30kg', [Set(ST.WEIGHT, 8, Weight(30, WU.KG), None),
                       Set(ST.WEIGHT, 8, Weight(30, WU.KG), None)]),
         ('10x100kg', [Set(ST.WEIGHT, 10, Weight(100, WU.KG), None)]),
-        (' X  ',   []),
-        ('V   ',   []),
+        ('X',   []),
+        ('V',   []),
         ('5,3@BW', [Set(ST.WEIGHT, 5, Weight(None, WU.BW), None),
                     Set(ST.WEIGHT, 3, Weight(None, WU.BW), None)]),
         ('5,4@150kg', [Set(ST.WEIGHT, 5, Weight(150, WU.KG), None),
@@ -82,13 +82,11 @@ class SetsPlannedParsing(unittest.TestCase):
             logger.info(f'test_sets_planned_from_string: {result}')
             self.assertEqual(result, output_dict, msg=f'{result}, {output_dict}')
 
-
 class E1rmCalcTest(unittest.TestCase):
     correct_results = ()
 
     def test_e1rm_calc(self):
         pass
-
 
 if __name__ == '__main__':
     unittest.main()
