@@ -6,7 +6,7 @@ sys.path.insert(0,parentdir)
 import unittest
 import logging
 
-from utils import roundWithBias
+from utils import roundWithBias, calculate_e1RM
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +18,21 @@ class RoundWithBiasTest(unittest.TestCase):
                        (0.999999, 1),
                        (0.5, 0.5),
                       )
-    
+
     def test_rounding(self):
         for x, r in self.correct_results:
             ret = roundWithBias(x)
             logger.info(f'RoundWithBias({x}) == {ret}, correct=={r}')
             self.assertEqual(r, ret)
+
+class E1rmCalcTest(unittest.TestCase):
+    correct_results = (((100.0, 3, 9.0), 112.108),)
+
+    def test_e1rm_calc(self):
+        for test_input, correct_result in self.correct_results:
+            result = calculate_e1RM(*test_input)
+
+            self.assertEqual(result, correct_result, msg=f'{result}, {correct_result}')
 
 if __name__ == '__main__':
     unittest.main()

@@ -50,7 +50,8 @@ def calculate_e1RM(weight, reps, rpe_str):
     else:
         rpe = rpe_str
     if weight and reps and rpe >= 6.0:
-        return 100*weight/DATA['rpe_percentage_chart'][str(rpe)][int(reps-1)]
+        return round(100*weight/DATA['rpe_percentage_chart']
+                                    [str(rpe)][int(reps-1)], 3)
     else:
         return 0
 

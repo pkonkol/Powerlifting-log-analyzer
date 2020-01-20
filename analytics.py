@@ -41,8 +41,6 @@ class DataAnalyzer():
         elif rpe <= 9 and rpe >8:
             stress_index += si_mod[-2]
         #[si[9.3]
-        for l, u, mod in si_mod:
-            if rpe
 
         si_mod = {'10': 1.333,
                   '9.6': 1.333,

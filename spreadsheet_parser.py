@@ -13,7 +13,7 @@ MATCH_PLANNED_TO_DONE = False
 RPE_SCHEME = '(?P<rpe>(?:[1-9](?:,|\.)[5])|(?:[1-9]|10)|(?:9\.\(3\)|9\.3|9\.\(6\)|9\.6))'
 RPE_MULTISET_SCHEME = f'(?P<multi_rpe>(?:@{RPE_SCHEME}){{2,}})'
 WEIGHT_SCHEME = '(?:(?P<weight>[0-9]+(?:\.[0-9]{1,3})?)' \
-                '(?i)(?P<unit>kg|lbs)?|(?P<bw>BW))'
+                '(?i)(?P<unit>kg|lbs|bw)?|(?P<bw>BW))'
 PERCENTAGE_SCHEME = '(?P<percentage>[1-9][0-9]?|100)'
 REPS_SCHEME = '(?P<reps>[0-9]+)'
 SETS_SCHEME = '(?P<sets>[0-9]+)'
@@ -144,7 +144,7 @@ class Exercise:
         NONE = -1
         RPE = 0
         WEIGHT = 1
-        PERCENT1RM = 2
+        PERCENT_1RM = 2
         LOAD_DROP = 3
         FATIGUE_PERCENT = 4
         RPE_RAMP = 5
@@ -153,48 +153,54 @@ class Exercise:
     Weight = namedtuple('Weight', ('value', 'unit',))
     Set =  namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
     schemes_planned = (
-            (re.compile(f'^x{REPS_SCHEME}@{RPE_SCHEME}$'), SetType.RPE), # REPS at RPE
-            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$'),
-                SetType.PERCENT1RM),# SETS of REPS at PERCENTAGE
-            (re.compile(f'^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$'), # PERCENTAGE at RPE
-                SetType.PERCENT1RM),
-            (re.compile(f'^x{REPS_SCHEME}(?:@{RPE_SCHEME}){{2,}}$'), # REPS at RPE multiple #needs furhter processing
-                SetType.RPE),
-            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}^@{RPE_SCHEME}$'),# SETS of REPS starting at RPE
-                SetType.RPE),
-            (re.compile(f'^{SETS_SCHEME}x@{RPE_SCHEME}$'), # number of SETS at RPE
-                SetType.RPE),
-            (re.compile(f'^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$'), # REPS at %1RM
-                SetType.PERCENT1RM),
-            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}V{PERCENTAGE_SCHEME}%$'), # SETS of REPS at PERCENTAGE
-                SetType.LOAD_DROP),
-            (re.compile(f'^{SETS_SCHEME}x{WEIGHT_SCHEME}@{RPE_SCHEME}$'), # SETS x WEIGHT at RPE
-                SetType.WEIGHT),
-            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}$'),# SETS of REPS starting at RPE
-                SetType.WEIGHT),
-            )
+        (re.compile(f'^x{REPS_SCHEME}@{RPE_SCHEME}$'), SetType.RPE), # x5@9 REPS at RPE
+        (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$'),
+            SetType.PERCENT_1RM),# 5x5@90% SETS of REPS at PERCENTAGE
+        (re.compile(f'^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$'), # 80%@8 PERCENTAGE at RPE
+            SetType.PERCENT_1RM),
+        (re.compile(f'^x{REPS_SCHEME}{RPE_MULTISET_SCHEME}$'), # x5@8@9 REPS at RPE multiple #needs furhter processing
+            SetType.RPE),
+        (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}\^@{RPE_SCHEME}$'),# 4x4^@7 SETS of REPS starting at RPE
+            SetType.RPE),
+        (re.compile(f'^{SETS_SCHEME}x@{RPE_SCHEME}$'), #  3x@9 number of SETS at RPE
+            SetType.RPE),
+        (re.compile(f'^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$'), # 80%x5 REPS at %1RM
+            SetType.PERCENT_1RM),
+        (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}V{PERCENTAGE_SCHEME}%$'), # 3x3V90% SETS of REPS at PERCENTAGE
+            SetType.LOAD_DROP),
+        (re.compile(f'^x{REPS_SCHEME}\$@{RPE_SCHEME}$'), # 3x3$@9 SETS x WEIGHT at RPE
+            SetType.RPE_RAMP),
+        (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}$'),# 3x8 SETS of REPS starting at RPE
+            SetType.NONE),
+        (re.compile(f'^x{REPS_SCHEME}@{RPE_SCHEME}\-{PERCENTAGE_SCHEME}%$'),# x4@9-7% SETS of REPS starting at RPE
+            SetType.FATIGUE_PERCENT),
+        (re.compile(f'^{WEIGHT_SCHEME}@{RPE_SCHEME}$'),# 160lbs@9 SETS of REPS starting at RPE
+            SetType.RPE),
+        (re.compile(f'^{WEIGHT_SCHEME}/{REPS_SCHEME}$'),# 150x5 SETS of REPS starting at RPE
+            SetType.WEIGHT),
+    )
     schemes_done = (
-            (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}@{RPE_SCHEME}$'),#weightXreps at RPE
-                SetType.WEIGHT),
-            (re.compile(f'^{WEIGHT_SCHEME}@{RPE_SCHEME}$'), #'weight at RPE (presumed same set number as planned)',
-                SetType.WEIGHT),
-            (re.compile(f'^{WEIGHT_SCHEME}{RPE_MULTISET_SCHEME}$'), #Multiple Weight@Rpe sets written in one string
-                SetType.WEIGHT),
-            (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}' \
-                       f'{RPE_MULTISET_SCHEME}$'), #Multiple WeightXReps@Rpe sets written in one string
-                SetType.WEIGHT),
-            (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}' \
-                       f'(?:\/|x|@){WEIGHT_SCHEME}$'),
-                SetType.WEIGHT),
-            (re.compile('^ *X *$'), # exercise not done
-                SetType.NONE),
-            (re.compile('^ *V *$'),
-                SetType.NONE),
-            (re.compile(f'^(?:{REPS_SCHEME}(?:,|@))+{WEIGHT_SCHEME}$'), #Multiple sets at given weight
-                SetType.WEIGHT),
-            (re.compile(f'^{REPS_SCHEME}x{WEIGHT_SCHEME}$'), #Reps at weight
-                SetType.WEIGHT),
-            )
+        (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}@{RPE_SCHEME}$'),#weightXreps at RPE
+            SetType.WEIGHT),
+        (re.compile(f'^{WEIGHT_SCHEME}@{RPE_SCHEME}$'), #'weight at RPE (presumed same set number as planned)',
+            SetType.WEIGHT),
+        (re.compile(f'^{WEIGHT_SCHEME}{RPE_MULTISET_SCHEME}$'), #Multiple Weight@Rpe sets written in one string
+            SetType.WEIGHT),
+        (re.compile(f'^{WEIGHT_SCHEME}x{REPS_SCHEME}' \
+                    f'{RPE_MULTISET_SCHEME}$'), #Multiple WeightXReps@Rpe sets written in one string
+            SetType.WEIGHT),
+        (re.compile(f'^{SETS_SCHEME}x{REPS_SCHEME}' \
+                    f'(?:\/|x|@){WEIGHT_SCHEME}$'),
+            SetType.WEIGHT),
+        (re.compile('^ *(?P<undone>X) *$'), # exercise not done
+            SetType.NONE),
+        (re.compile('^ *(?P<done>V) *$'),
+            SetType.NONE),
+        (re.compile(f'^(?P<multi_reps>(?:{REPS_SCHEME}(?:,|@))+){WEIGHT_SCHEME}$'), #Multiple sets at given weight
+            SetType.WEIGHT),
+        (re.compile(f'^{REPS_SCHEME}x{WEIGHT_SCHEME}$'), #Reps at weight
+            SetType.WEIGHT),
+    )
 
 
     def __init__(self, planned_str, done_str, notes):
@@ -211,11 +217,9 @@ class Exercise:
         if self.done:
             self.e1RM = self.get_e1RM()
         else:
-            self.e1RM = None
+            self.e1RM = 0
 
     def get_e1RM(self):
-        logging.debug([ws for ws in self.sets_done])
-        logging.debug(self.is_superset)
         if self.is_superset:
             x = [max([calculate_e1RM(ws['weight'], ws['reps'], ws['RPE'])
                 for ws in e]) for e in self.sets_done]
@@ -267,93 +271,29 @@ class Exercise:
         return (name.rstrip(), modifiers)
 
     def sets_done_from_string(self, sets_str):
-        prior_weight = 0
-        prior_reps = 0
-        prior_rpe = 0
-
         schemes = self.schemes_done
-
         sets_str = re.split(' |;', sets_str)
-        sets_done = []
-        set_no = 1
         for set_str in sets_str:
             while True:
                 try:
                     match = [(pattern[0].match(set_str), index+1, pattern[1])
-                                for index, pattern
-                                in enumerate(schemes)
-                                if pattern[0].match(set_str)][0]
+                        for index, pattern
+                        in enumerate(schemes)
+                        if pattern[0].match(set_str)][0]
                 except IndexError as e:
-                    breakpoint()
                     logging.exception(e)
                     print('Failed to match set with any of schemes')
-                    print('Please enter correct string')
-                    set_str = input()
-                    print(set_str, end='')
-                    continue
                 break
-
-            logging.debug(f'Done: {sets_str}, {set_str} - no{set_no},' \
+            logging.debug(f'Done: {sets_str}, {set_str}, ' \
                 f'match={match}, groups={match[0].groups()}')
-            if match[1] == 1:
-                # 150x5@9.5 Weight x reps @ RPE
-                sets_done.append(self.set_into_dict(
-                    weight=float(match[0].group('weight').replace(',', '.')),
-                    reps=int(match[0].group('reps').replace(',', '.')),
-                    rpe=float(match[0].group('rpe').replace(',', '.')),
-                    set_no=set_no))
-            elif match[1] == 2:
-                # 150lbs@9 Weight @ RPE
-                sets_done.append(self.set_into_dict(
-                    weight=float(match[0].group('weight').replace(',', '.')),
-                    rpe=float(match[0].group('rpe').replace(',', '.')),
-                    set_no=set_no))
-            elif match[1] == 3:
-                # 150@7@8@9 Weight @ multiple rpe
-                multiset_weight = float(match[0].group('weight').replace(',','.'))
-                multiset_rpe_list = match[0].group('multi_rpe').split('@')[1:]
-                for rpe in multiset_rpe_list:
-                    sets_done.append(self.set_into_dict(
-                        weight=multiset_weight,
-                        rpe = rpe.replace(',','.'),
-                        set_no=set_no))
-            elif match[1] == 4:
-                # 150kgx5@7@8@9 Weight x reps @ multiple rpe
-                multiset_weight = float(match[0].group('weight').replace(',','.'))
-                multiset_reps = match[0].group('reps').replace(',', '.')
-                multiset_rpe_list = match[0].group('multi_rpe').split('@')[1:]
-                for rpe in multiset_rpe_list:
-                    sets_done.append(self.set_into_dict(
-                        weight=multiset_weight,
-                        reps=int(multiset_reps),
-                        rpe=float(rpe.replace(',','.')),
-                        set_no=set_no))
-            elif match[1] == 5:
-                # 3x10x25kg Sets x reps x|/|@ weight
-                sets = int(match[0].group('sets'))
-                multiset_reps = int(match[0].group('reps'))
-                multiset_weight = float(match[0].group('weight'))
-                for _ in range(0, sets):
-                    sets_done.append(self.set_into_dict(
-                        weight=multiset_weight,
-                        reps=multiset_reps,
-                        set_no=set_no))
-            elif match[1] == 6:
-                # X Exercise not done
-                self.done = False
-            elif match[1] == 7:
-                # V  Exercise done as planned
-                self.done = True
-            elif match[1] == 8:
-                # 5,4,4,3,3@120kg Multiple sets @ given weight
-                for _ in sets:
-                    pass
-            elif match[1] == 9:
-                # 5x100kg Reps x weight
-                sets_done.append(self.set_into_dict(
-                    weight=float(match[0].group('weight')),
-                    reps=int(match[0].group('reps')),
-                    set_no=set_no))
+
+        sets_done = self.parse_matched_set(match)
+        if sets_done == (0,):
+            self.done = False
+            sets_done = []
+        elif sets_done == (1,):
+            self.done = True
+            sets_done = []
 
         return sets_done
 
@@ -366,155 +306,70 @@ class Exercise:
         logging.debug('sets planned str:' + sets_planned_str +'/')
         sets_str = re.split(' |;', sets_planned_str)
         logging.debug(sets_str)
-        sets_planned = []
-        set_no = 1
         for set_str in sets_str:
             while True:
                 try:
                     match = [(pattern[0].match(set_str), index+1, pattern[1])
-                                for index, pattern
-                                in enumerate(schemes)
-                                if pattern[0].match(set_str)][0]
+                        for index, pattern
+                        in enumerate(schemes)
+                        if pattern[0].match(set_str)][0]
                 except IndexError as e:
                     logging.exception(e)
                     print('Failed to match set with any of schemes')
-                    print('Please enter correct string')
-                    print('wrong set str ' + set_str, end='')
-                    set_str = input()
-                    continue
                 break
 
-            logger.info(f'Planned: {sets_str}, {set_str} - no{set_no},' \
+            logger.info(f'Planned: {sets_str}, {set_str}, ' \
                         f'match={match}, groups={match[0].groups()}')
-
-            #    if match[1] == 1:
-            #    # x5@9 Reps @ RPE
-            #        sets_planned.append(self.set_into_dict(
-            #            reps=int(match[0].group('reps').replace(',', '.')),
-            #            rpe=float(match[0].group('rpe').replace(',', '.')),
-            #            set_no=set_no
-            #        ))
-            #    elif match[1] == 2:
-            #    # 3x5@90% Sets x reps @ percentage
-            #        multiset_sets = int(match[0].group('sets').replace(',', '.'))
-            #        multiset_reps = int(match[0].group('reps').replace(',', '.'))
-            #        multiset_weight = match[0].group('percentage').replace(',','.')
-            #        for _ in range(0,multiset_sets):
-            #            sets_planned.append(self.set_into_dict(
-            #                weight=multiset_weight,
-            #                reps=multiset_reps,
-            #                set_no=set_no
-            #            ))
-            #    elif match[1] == 3:
-            #    # 80%@9 Percentage @ RPE
-            #        sets_planned.append(self.set_into_dict(
-            #            weight=float(match[0].group('weight').replace(',','.')),
-            #            rpe=float(match[0].group('rpe').replace(',', '.')),
-            #            set_no=set_no
-            #        ))
-            #    elif match[1] == 4:
-            #    # x5@7@8@9 x reps @ multiple rpe
-            #        multiset_reps = int(match[0].group('reps').replace(',', '.'))
-            #        multiset_rpe_list = match[0].group('multi_rpe').split('@')[1:]
-            #        for rpe in multiset_rpe_list:
-            #            sets_planned.append(self.set_into_dict(
-            #                reps=multiset_reps,
-            #                rpe=float(rpe.replace(',','.')),
-            #                set_no=set_no
-            #            ))
-            #    elif match[1] == 5:
-            #    # 3x5@8 sets x reps @ RPE
-            #        multiset_reps = int(match[0].group('reps').replace(',', '.'))
-            #        multiset_rpe = float(match[0].group('rpe').replace(',', '.'))
-            #        for _ in range(0,int(match[0].group('sets').replace(',','.'))):
-            #            sets_planned.append(self.set_into_dict(
-            #                reps=multiset_reps,
-            #                rpe=multiset_rpe,
-            #                set_no=set_no
-            #            ))
-            #    elif match[1] == 6:
-            #    # 5x@9 Sets x @ RPE
-            #        multiset_sets = int(match[0].group('sets').replace(',', '.'))
-            #        multiset_rpe = float(match[0].group('rpe').replace(',', '.'))
-            #        for _ in range(0,multiset_sets):
-            #            sets_planned.append(self.set_into_dict(
-            #                rpe=multiset_rpe,
-            #                set_no=set_no
-            #            ))
-            #    elif match[1] == 7:
-            #    # 80%x5 percentage x reps
-            #        sets_planned.append(self.set_into_dict(
-            #            weight=float(match[0].group('weight').replace(',','.')),
-            #            reps=int(match[0].group('reps').replace(',', '.')),
-            #            set_no = set_no
-            #        ))
-            #    elif match[1] == 8:
-            #    # 3x5@90% Sets x reps @ percentage
-            #        pass
-            #    elif match[1] == 9:
-            #    # 5xBW@9 sets x weight @ RPE
-            #        multiset_sets = int(match[0].group('sets').replace(',', '.'))
-            #        multiset_weight = float(match[0]
-            #                              .group('weight').replace(',','.'))
-            #        multiset_rpe = float(match[0].group('rpe').replace(',','.'))
-            #        for _ in range(0,multiset_sets):
-            #            sets_planned.append(self.set_into_dict(
-            #                weight=multiset_weight,
-            #                rpe=multiset_rpe,
-            #                set_no=set_no))
-            #    elif match[1] == 10:
-            #    # 5x3 sets x reps
-            #        multiset_sets = int(match[0].group('sets').replace(',', '.'))
-            #        multiset_reps = int(match[0].group('reps').replace(',', '.'))
-            #        for _ in range(0,multiset_sets):
-            #            sets_planned.append(self.set_into_dict(reps=multiset_reps,
-            #                                                   set_no = set_no))
-            # sets_planned.append(self.parse_matched_set(match))
         sets_planned = self.parse_matched_set(match)
-
         return sets_planned
 
     def parse_matched_set(self, match):
         groupdict = match[0].groupdict()
+        if 'undone' in groupdict:
+            return (0,)
+        if 'done' in groupdict:
+            return (1,)
+
+        logger.debug(groupdict)
         sets = []
 
         getdict = {
             'set_type': match[2],
-            'reps': int(match[0].group('reps').replace('.', '.')) if
-                    'reps' in groupdict else None,
+            'reps': int(match[0].group('reps').replace(',', '.')) if
+                        'reps' in groupdict else None,
             'sets': int(match[0].group('sets').replace(',', '.')) if
-                'sets' in groupdict else None,
+                        'sets' in groupdict else None,
             'rpe': (float(match[0].group('rpe')
-                .replace(',', '.').replace('(','').replace(')',''))
-                if 'rpe' in groupdict else None),
+                    .replace(',', '.').replace('(','').replace(')',''))
+                    if 'rpe' in groupdict else None),
             'weight': (float(match[0].group('weight').replace(',', '.'))
-                if 'weight' in groupdict else None),
-            'percentage': (float(match[0].group('percentage').replace(',', '.'))
+                    if 'weight' in groupdict and groupdict['weight'] != None else None),
+            'percentage': (float(match[0].group('percentage').replace(',', '.'))/100.0
                             if 'percentage' in groupdict else None),
             'multi_rpe': match[0].group('multi_rpe').split('@')[1:] if
-                'multi_rpe' in groupdict else None,
+                         'multi_rpe' in groupdict else None,
+            'multi_reps': match[0].group('multi_reps').strip('@').split(',') if
+                          'multi_reps' in groupdict else None
         }
+        logger.debug(getdict)
 
         if getdict['weight']:
-            if 'unit' in groupdict:
-                matched_unit = match[0].group('unit')
-                if matched_unit == 'kg':
-                    getdict['unit'] = WeightUnit.KG
-                elif matched_unit == 'lbs':
-                    getdict['unit'] = WeightUnit.LBS
-                elif matched_unit == 'bw':
-                    getdict['unit'] = WeightUnit.BW
-                else:
-                    raise StandardError('couldnt match unit')
+            matched_unit = match[0].group('unit')
+            if matched_unit == 'kg':
+                getdict['unit'] = WeightUnit.KG
+            elif matched_unit == 'lbs':
+                getdict['unit'] = WeightUnit.LBS
             else:
                 getdict['unit'] = self.DefaultUnit
+        elif 'bw' in groupdict and groupdict['bw'] == 'BW':
+            getdict['unit'] = WeightUnit.BW
         elif getdict['percentage']:
-            if getdict['set_type']==self.SetType.PERCENT1RM:
-                getdict['unit'] = WeightUnit.PERCENT1RM
+            if getdict['set_type']==self.SetType.PERCENT_1RM:
+                getdict['unit'] = WeightUnit.PERCENT_1RM
             elif getdict['set_type']==self.SetType.LOAD_DROP:
                 getdict['unit'] = -1
-            elif getdict['set_type']==self.setType.FATIGUE_PERCENT:
-                getdict['unit'] = -1
+            elif getdict['set_type']==self.SetType.FATIGUE_PERCENT:
+                getdict['unit'] = None
             else:
                 raise StandardError('Unsupported Set Type for percentage')
 
@@ -524,35 +379,41 @@ class Exercise:
                 sets.append(_set)
 
                 if getdict['set_type'] == self.SetType.RPE:
-                    getdict['set_type'] = self.SetType.LOAD_DROP
-                    getdict['unit'] = -(i)
+                    if 'unit' in getdict and getdict['unit'] == WeightUnit.BW:
+                        continue
+                    getdict.update({'percentage': 1.0, 'unit': -1, 'rpe': None,
+                                    'set_type': self.SetType.LOAD_DROP})
+                    continue
+
+                if getdict['set_type'] == self.SetType.LOAD_DROP:
+                    getdict['unit'] -= 1
         elif 'multi_rpe' in groupdict:
-            breakpoint()
             for rpe in getdict['multi_rpe']:
-                _set = self.create_set_object(rpe=rpe, **getdict)
+                getdict['rpe']=float(rpe.replace(',', '.')
+                                         .replace('(','').replace(')',''))
+                _set = self.create_set_object(**getdict)
+                sets.append(_set)
+        elif 'multi_reps' in groupdict:
+            for reps in getdict['multi_reps']:
+                getdict['reps'] = int(reps)
+                _set = self.create_set_object(**getdict)
                 sets.append(_set)
         else:
             _set = self.create_set_object(**getdict)
             sets.append(_set)
 
-
-
         return sets
 
 
-    def create_set_object(self, set_type=None, reps=None, rpe=None, weight=None, unit=None, **kwargs):
-        Weight, Set = self.Weight, self.Set #namedtuple('Weight', ('value', 'unit',))
-        #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
-        cnt_set = Set(self.SetType.RPE, reps, Weight(weight, unit), rpe)
-        return cnt_set
+    def create_set_object(self, set_type=None, reps=None, rpe=None,
+                          weight=None, percentage=None, unit=None, **kwargs):
+        w = self.Weight(weight if weight else
+                        percentage if percentage else
+                        None,
+                unit)
+        return self.Set(set_type, reps, w, rpe)
 
     def match_sets_planned_done(self):
-        pass
-
-
-    def analyze_exercise(self):
-        ''' Retrieves information form datasets.json and perfrorms analyze'''
-        #json.
         pass
 
     def volume(self):

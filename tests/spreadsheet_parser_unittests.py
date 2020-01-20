@@ -15,16 +15,15 @@ WU = sp.WeightUnit
 logger = logging.getLogger(__name__)
 
 class SetsDoneParsing(unittest.TestCase):
-    correct_results = (('2x8', [Set(ST.NONE, 8, Weight(None, None), None),
-                            Set(ST.NONE, 8, Weight(None, None), None)]),
-        ('200@9',   [Set(ST.WEIGHT, None, Weight(200, DU.value), 9)]),
+    correct_results = (
+        ('200@9',   [Set(ST.WEIGHT, None, Weight(200, DU), 9)]),
         ('200kg@9.(3)', [Set(ST.WEIGHT, None, Weight(200, WU.KG), 9.3)]),
         ('200lbs@9.(6)', [Set(ST.WEIGHT, None, Weight(200, WU.LBS), 9.6)]),
-        ('200x5@9', [Set(ST.WEIGHT, 5, Weight(200, DU.value), 9)]),
-        ('160x5@7@8.5', [Set(ST.WEIGHT, 5, Weight(160, DU.value), 7),
-                        Set(ST.WEIGHT, 5, Weight(160, DU.value), 8.5)]),
-        ('180@7@9', [Set(ST.WEIGHT, None, Weight(180, DU.value), 7),
-                     Set(ST.WEIGHT, None, Weight(180, DU.value), 9)]),
+        ('200x5@9', [Set(ST.WEIGHT, 5, Weight(200, DU), 9)]),
+        ('160x5@7@8.5', [Set(ST.WEIGHT, 5, Weight(160, DU), 7),
+                        Set(ST.WEIGHT, 5, Weight(160, DU), 8.5)]),
+        ('180@7@9', [Set(ST.WEIGHT, None, Weight(180, DU), 7),
+                     Set(ST.WEIGHT, None, Weight(180, DU), 9)]),
         ('2x10/20kg', [Set(ST.WEIGHT, 10, Weight(20, WU.KG), None),
                        Set(ST.WEIGHT, 10, Weight(20, WU.KG), None)]),
         ('2x12@15kg', [Set(ST.WEIGHT, 12, Weight(15, WU.KG), None),
@@ -41,33 +40,37 @@ class SetsDoneParsing(unittest.TestCase):
     )
 
     def test_sets_done_from_string(self):
-        e = sp.Exercise()
+        def f(self):
+            pass
+
+        e = sp.Exercise
+        e.__init__ = f
+        e = e()
         for sets_str, output_dict in self.correct_results:
             result = e.sets_done_from_string(sets_str)
-            print('test_sets_done_from_string: {}'.format(result))
-            self.assertEqual(result, output_dict, msg='{}, {}'.format(result, output_dict))
+            logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
+            self.assertEqual(result, output_dict, msg=f'{result}, {output_dict}')
 
 class SetsPlannedParsing(unittest.TestCase):
     #Set =  self.Set #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
     correct_results = (('x8@9.(3)', [Set(ST.RPE, 8, Weight(None, None), 9.3)]),
-        ('2x5V80%', [Set(ST.LOAD_DROP, 5, Weight(0.8, None), None),
-                     Set(ST.LOAD_DROP, 5, Weight(0.8, None), None),
+        ('2x5V80%', [Set(ST.LOAD_DROP, 5, Weight(0.8, -1), None),
+                     Set(ST.LOAD_DROP, 5, Weight(0.8, -2), None),
                     ]),
-        ('2x3@80%', [Set(ST.PERCENT1RM, 3, Weight(0.8, None), None),
-                     Set(ST.PERCENT1RM, 3, Weight(0.8, None), None)]),
+        ('2x3@80%', [Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None),
+                     Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None)]),
         ('2x8', [Set(ST.NONE, 8, Weight(None, None), None),
                  Set(ST.NONE, 8, Weight(None, None), None)]),
-        ('5x80%', [Set(ST.PERCENT1RM, 5, Weight(0.8, None), None) ]),
+        ('80%x5', [Set(ST.PERCENT_1RM, 5, Weight(0.8, WU.PERCENT_1RM), None) ]),
         ('x5@7.5@9', [Set(ST.RPE, 5, Weight(None,None), 7.5),
-                      Set(ST.RPE, 5, Weight(None,None), 9)]),
-        ('2x5^@7', [Set(ST.RPE, 5, Weight(None,None), 7),
-                    Set(ST.LOAD_DROP, 5, Weight(1.0, None), None)]),
-        ('x6$@9', [Set(ST.RPE_RAMP, 6, Weight(None, None), 9)]),
-        ('x4@9-7%', [Set(ST.FATIGUE_PERCENT, 4, Weight(0.93, None), 9.0)]),
-        ('2x@9', [Set(ST.RPE, None, Weight(None, WU.BW), 9)]),
-        ('160lbs@9', [Set(ST.RPE, None, Weight(160, WU.LBS), 9)]),
-        ('160kg@9.(6)', [Set(ST.RPE, None , Weight(160, WU.KG), 9.6)]),
-        ('150x5', [Set(ST.RPE, 5, Weight(150, DU.value), None)]),
+                      Set(ST.RPE, 5, Weight(None,None), 9.0)]),
+        ('2x5^@7', [Set(ST.RPE, 5, Weight(None,None), 7.0),
+                    Set(ST.LOAD_DROP, 5, Weight(1.0, -1), None)]),
+        ('x6$@9', [Set(ST.RPE_RAMP, 6, Weight(None, None), 9.0)]),
+        ('x4@9-7%', [Set(ST.FATIGUE_PERCENT, 4, Weight(0.07, None), 9.0)]),
+        ('160lbs@9', [Set(ST.RPE, None, Weight(160.0, WU.LBS), 9.0)]),
+        ('160kg@9.(6)', [Set(ST.RPE, None , Weight(160.0, WU.KG), 9.6)]),
+        ('150/5', [Set(ST.WEIGHT, 5, Weight(150.0, DU), None)]),
     )
 
     def test_sets_planned_from_string(self):
@@ -82,11 +85,6 @@ class SetsPlannedParsing(unittest.TestCase):
             logger.info(f'test_sets_planned_from_string: {result}')
             self.assertEqual(result, output_dict, msg=f'{result}, {output_dict}')
 
-class E1rmCalcTest(unittest.TestCase):
-    correct_results = ()
-
-    def test_e1rm_calc(self):
-        pass
 
 if __name__ == '__main__':
     unittest.main()
