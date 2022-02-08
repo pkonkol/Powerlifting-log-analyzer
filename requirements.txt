@@ -1,2 +1,1 @@
-setuptools==41.0.1
-openpyxl==2.6.2
+gspread==5.1.1
