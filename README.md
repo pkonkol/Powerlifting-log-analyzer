@@ -1,6 +1,6 @@
 # Powerlifting Log Analyzer
 ## Rewriting that from half-scratch with gspread and may finish this time
-Open Powerlifting Log is a tool for efficient logging and analyzing training programs. It was
+Powerlifting log analyzer is a tool for efficient logging and analyzing training programs. It was
 designed especially for RPE based programming, but might be used with oldschool
 1RM percentage programs. Syntax is made to be concise, allowing one to quickly
 and easily write trainings logs abundant in information.

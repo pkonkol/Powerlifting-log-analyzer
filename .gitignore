@@ -4,3 +4,4 @@ env*/
 venv*/
 *.pyc
 pla.log
+*.json
