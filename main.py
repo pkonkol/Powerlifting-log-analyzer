@@ -1,6 +1,5 @@
 import gspread
 import re
-import numpy as np
 from pprint import pprint
 from typing import List
 
@@ -11,61 +10,62 @@ class Exercise:
         self.done = done
         self.notes = notes
 
+    def __repr__(self):
+        return f"{self.planned}:{self.done}\n"
+
 
 class Session:
     def __init__(self, exercises: List[Exercise], date: str):
         self.exercises = exercises
         self.date = date
 
+    def __repr__(self):
+        ret = f"Session from {self.date}"
+        for e in self.exercises:
+            ret += str(e)
+        return ret + "\n"
 
-class Micro:
+
+class Microcycle:
     def __init__(self, sessions: List[Session]):
         self.sessions = sessions
 
+    def __repr__(self):
+        ret = f"Microcycle: "
+        for s in self.sessions:
+            ret += str(s)
+        return ret + "\n"
 
-class Meso:
-    def __init__(self, micros: List[Micro]):
+
+class Mesocycle:
+    def __init__(self, micros: List[Microcycle]):
         self.micros = micros
 
     def __repr__(self):
-        return self.cell.value + str(self.micros)
+        ret = f"Mesocycle: "
+        for m in self.micros:
+            ret += str(m)
+        return ret + "\n"
 
 
-def parse_exercise(planned_cell, done_cell):
-    # notes = (
-    #     wksh.get_note(planned_cell.address) + "\n" + wksh.get_note(done_cell.address)
-    # )
+def get_exercise(planned_cell, done_cell):
     return Exercise(planned_cell.value, done_cell.value, "")
 
 
-def parse_sessions(planned_cells, done_cells):
+def get_sessions(planned_cells, done_cells):
     sessions = []
     exercises = []
     for p, d in zip(planned_cells[1:], done_cells[1:]):
-        exercises.append(parse_exercise(p, d))
+        exercises.append(get_exercise(p, d))
     date = done_cells[0].value
-
-    # for s in session_cells:
-    #     exercises = []
-    #     for i in range(1,height):
-    #         planned_cell = wksh.cell(s.row + i, s.col)
-    #         done_cell = wksh.cell(s.row + i, s.col + 1)
-    #         if planned_cell.value == "" or done_cell.value == "":
-    #             continue
-    #         exercises.append(parse_exercise(planned_cell, done_cell))
-    #     date = wksh.cell(s.row, s.col + 1)
-    #     sessions.append(Session(exercises, date.value))
-
     return Session(exercises, date)
 
 
-def parse_microcycles(weeks_split):
-    sessions = []
+def get_microcycles(weeks_split):
+    micros = []
     pattern = re.compile("^[Dd][0-9]+|GPP")
     for i, m in enumerate(weeks_split):
-        # session_cells = wksh.findall(pattern, in_row=m.row)
-        # print(session_cells)
-        # height = abs(m.row - (micro_cells[i+1].row if i+i < len(micro_cells) else G_HEIGHT))
+        sessions = []
         for c in weeks_split:
             sessions_row = [e for e in c if e.row == c[0].row]
             print(sessions_row)
@@ -75,20 +75,17 @@ def parse_microcycles(weeks_split):
                     done_cells = [i for i in c if i.col == x.col + 1 and i.row >= x.row]
                     print(planned_cells)
                     print(done_cells)
-                    session = parse_sessions(planned_cells, done_cells)
+                    session = get_sessions(planned_cells, done_cells)
                     sessions.append(session)
+        micros.append(Microcycle(sessions))
+    return micros
 
-    return Micro(sessions)
 
-
-def parse_mesocycles(blocks):
+def get_mesocycles(blocks):
     mesocycles = []
     pattern = re.compile("^[Ww][0-9]+")
-    # micro_cells = wksh.findall(pattern, in_column=0)
     for i, b in enumerate(blocks):
         next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
-        # micro_cells = [m for m in micro_cells if m.row > b.row and m.row < next_block_row]
-
         micro_a1 = (
             gspread.utils.rowcol_to_a1(b.row, b.col)
             + ":"
@@ -96,7 +93,6 @@ def parse_mesocycles(blocks):
         )
         meso_range = wksh.range(micro_a1)
         print(meso_range)
-        # micro_cells_2 = [c for c in meso_range if c.]
         # That code sucks, but works. Done for the need of api usage optimization
         W_row = 0
         weeks_split = []
@@ -110,14 +106,8 @@ def parse_mesocycles(blocks):
             if i == len(meso_range) - 1:
                 weeks_split.append(meso_range[W_row : i - 1])
             i += 1
-
-        print(weeks_split)
-        for w in weeks_split:
-            print("WEEKS SPLIT -------------------------")
-            print(w)
-
-        micros = parse_microcycles(weeks_split)
-        mesocycles.append(Meso(micros))
+        micros = get_microcycles(weeks_split)
+        mesocycles.append(Mesocycle(micros))
     return mesocycles
 
 
@@ -133,13 +123,6 @@ if __name__ == "__main__":
     G_WIDTH = len(wksh.get_all_values()[0]) + 1
     G_HEIGHT = len(wksh.get_all_values()) + 1
 
-    # print(wksh.get_all_values())
-    # print(wksh.get_all_records())
-    # array = np.array(wksh.get_all_values())
-    # pprint(array)
-    # exit()
-
-    # Identifty blocks
     blocks = wksh.findall(re.compile("^[Bb][0-9]+$"), in_column=0)
-    print(blocks)
-    mesocycles = parse_mesocycles(blocks)
+    mesocycles = get_mesocycles(blocks)
+    print(mesocycles[0])
