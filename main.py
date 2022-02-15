@@ -24,8 +24,7 @@ class Micro:
 
 
 class Meso:
-    def __init__(self, cell: gspread.Cell, micros: List[Micro]):
-        self.cell = cell
+    def __init__(self, micros: List[Micro]):
         self.micros = micros
 
     def __repr__(self):
@@ -33,10 +32,10 @@ class Meso:
 
 
 def parse_exercise(planned_cell, done_cell):
-    notes = (
-        wksh.get_note(planned_cell.address) + "\n" + wksh.get_note(done_cell.address)
-    )
-    return Exercise(planned_cell.value, done_cell.value, notes)
+    # notes = (
+    #     wksh.get_note(planned_cell.address) + "\n" + wksh.get_note(done_cell.address)
+    # )
+    return Exercise(planned_cell.value, done_cell.value, "")
 
 
 def parse_sessions(planned_cells, done_cells):
