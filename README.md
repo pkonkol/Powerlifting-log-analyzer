@@ -55,6 +55,7 @@ Scheme | Example | Description
 `<sets>x@<rpe>` | 4x@9 | Sets at RPE, reps vary by each set
 `<weight>@<rpe>` | 160@9 | Weight at RPE, reps autoregulated
 `<weight>x<reps>` | 150KGx5 |#
+`<sets>x` | 5x | For simple supplemental work where you don't need to specify reps
 
 ## Sets done syntax
 Scheme | Example | Description
@@ -65,8 +66,10 @@ Scheme | Example | Description
 `<weight>@<rpe>` | 200@8@9,5@10 | Weight at RPE, presumed same set number and reps as planned
 `<`sets>x<reps>{x &#124;@ &#124;/} `<`weight> | 3x10/20kg | ""
 `<reps>x<weight>` | 10x100kg | ""
-`X` | X | No sets were done
-`V` | V | Exercise done as planned
+`[Xx]` | x | No sets were done
+`[Vv]` | V | Exercise done as planned
+`[Vv]{2,}` | vvvvv | As many sets as v's done (5 in the example)
+`<weight>X[Vv]+` | 40kgXvvvv | As many sets as v's done with given weight (4 in the example)
 `(<reps>,)+@<weight>` | 5,5,4,4,3@BW | Varied number of reps at given weight
 
 ## Superset syntax
@@ -85,13 +88,13 @@ Sets done column scheme | Example | Description
 
 ## Microcycle syntax
 
-| D1 | `<date> [@ <place>]` | D2 | `<date> [@ <place>]` | ...|
-| -- | ------ | -- | ------ | -- |
-| Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... |
-| Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... |
-| . | . | . | . | ... |
-| . | . | . | . | ... |
-| . | . | . | . | ... |
+| D1 | `<date> [@ <place>]` | D2 | `<date> [@ <place>]` | ...| GPP | -- |
+| -- | ------ | -- | ------ | -- | -- | -- |
+| Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... | Bouldering | 01.02.03 18:00-20:00 |
+| Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... | . | . |
+| . | . | . | . | ... | . | . |
+| . | . | . | . | ... | . | . |
+| . | . | . | . | ... | . | . |
 
 
 ## Mesocycle syntax
