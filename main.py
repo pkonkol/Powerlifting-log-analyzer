@@ -515,16 +515,6 @@ class Exercise:
         )
 
 
-# class Exercise:
-#     def __init__(self, planned: str, done: str, notes):
-#         self.planned = planned
-#         self.done = done
-#         self.notes = notes
-
-#     def __repr__(self):
-#         return f"{self.planned}:{self.done}\n"
-
-
 class Session:
     def __init__(self, exercises: List[Exercise], date: str):
         self.exercises = exercises
@@ -563,7 +553,7 @@ def get_exercise(planned_cell, done_cell):
     return Exercise(planned_cell.value, done_cell.value, "")
 
 
-def get_sessions(planned_cells, done_cells):
+def get_session(planned_cells, done_cells):
     sessions = []
     exercises = []
     for p, d in zip(planned_cells[1:], done_cells[1:]):
@@ -576,7 +566,7 @@ def get_sessions(planned_cells, done_cells):
 
 def get_microcycles(weeks_split):
     micros = []
-    pattern = re.compile("^[Dd][0-9]+|GPP")
+    pattern = re.compile("^[Dd][0-9]+") # Ignore GPP column for now
     for i, m in enumerate(weeks_split):
         sessions = []
         for c in weeks_split:
@@ -586,40 +576,37 @@ def get_microcycles(weeks_split):
                 if re.match(pattern, x.value):
                     planned_cells = [i for i in c if i.col == x.col and i.row >= x.row]
                     done_cells = [i for i in c if i.col == x.col + 1 and i.row >= x.row]
-                    session = get_sessions(planned_cells, done_cells)
+                    session = get_session(planned_cells, done_cells)
                     sessions.append(session)
         micros.append(Microcycle(sessions))
     return micros
 
 
-def get_mesocycles(blocks):
+def get_mesocycle(block, last_row):
     mesocycles = []
     pattern = re.compile("^[Ww][0-9]+")
-    for i, b in enumerate(blocks):
-        next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
-        micro_a1 = (
-            gspread.utils.rowcol_to_a1(b.row, b.col)
-            + ":"
-            + gspread.utils.rowcol_to_a1(next_block_row, G_WIDTH)
-        )
-        meso_range = wksh.range(micro_a1)
-        print(meso_range)
-        # That code sucks, but works. Done for the need of api usage optimization
-        W_row = 0
-        weeks_split = []
-        while i < len(meso_range):
-            c = meso_range[i]
-            if re.match(pattern, c.value):
-                if W_row:
-                    micro_rows = range(W_row, i - 1)
-                    weeks_split.append(meso_range[W_row : i - 1])
-                W_row = i
-            if i == len(meso_range) - 1:
-                weeks_split.append(meso_range[W_row : i - 1])
-            i += 1
-        micros = get_microcycles(weeks_split)
-        mesocycles.append(Mesocycle(micros))
-    return mesocycles
+    # for i, b in enumerate(blocks):
+    micro_a1 = (
+        gspread.utils.rowcol_to_a1(block.row, block.col)
+        + ":"
+        + gspread.utils.rowcol_to_a1(last_row, G_WIDTH)
+    )
+    meso_range = wksh.range(micro_a1)
+    # logger.debug(meso_range)
+    # That code sucks, but works. Done for the need of api usage optimization
+    W_row = 0
+    weeks_split = []
+    # why TF block iterator is here
+    for i, c in enumerate(meso_range):
+        if re.match(pattern, c.value):
+            if W_row: # If we find a row with W[0-9]
+                weeks_split.append(meso_range[W_row : i - 1]) # Save microcycles from former week row to row before current
+            W_row = i
+        if i == len(meso_range) - 1 and W_row: # If we reach the end of sheet 
+            weeks_split.append(meso_range[W_row : i - 1])
+    # logger.debug(weeks_split)
+    micros = get_microcycles(weeks_split)
+    return Mesocycle(micros)
 
 
 if __name__ == "__main__":
@@ -635,5 +622,12 @@ if __name__ == "__main__":
     G_HEIGHT = len(wksh.get_all_values()) + 1
 
     blocks = wksh.findall(re.compile("^[Bb][0-9]+$"), in_column=0)
-    mesocycles = get_mesocycles(blocks[:1])
+    mesocycles = []
+    for i, block in enumerate(blocks):
+    # next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
+    # TODO send mesocycle height to the get_ function
+    # change to get_mesocycle that parses only one, move height management to upper level
+        last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
+        mesocycles.append(get_mesocycle(block, last_row))
+        break
     print(mesocycles[0])
