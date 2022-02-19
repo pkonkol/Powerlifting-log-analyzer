@@ -11,7 +11,7 @@ logging.basicConfig(
     filename="pla.log",
     format="%(levelname)s:%(name)s:%(lineno)s  %(message)s",
     level=logging.DEBUG,
-    filemode='w',
+    filemode="w",
 )
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ PERCENTAGE_SCHEME = "(?P<percentage>[1-9][0-9]?|100)"
 REPS_SCHEME = "(?P<reps>[0-9]+)"
 SETS_SCHEME = "(?P<sets>[0-9]+)"
 
+
 class SetType(Enum):
     NONE = -1
     RPE = 0
@@ -36,6 +37,7 @@ class SetType(Enum):
     FATIGUE_PERCENT = 4
     RPE_RAMP = 5
 
+
 SCHEMES_PLANNED = (
     (re.compile(f"^x{REPS_SCHEME}@{RPE_SCHEME}$"), SetType.RPE),  # x5@9 REPS at RPE
     (
@@ -43,9 +45,7 @@ SCHEMES_PLANNED = (
         SetType.PERCENT_1RM,
     ),  # 5x5@90% SETS of REPS at PERCENTAGE
     (
-        re.compile(
-            f"^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$"
-        ),  # 80%@8 PERCENTAGE at RPE
+        re.compile(f"^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$"),  # 80%@8 PERCENTAGE at RPE
         SetType.PERCENT_1RM,
     ),
     (
@@ -75,9 +75,7 @@ SCHEMES_PLANNED = (
         SetType.LOAD_DROP,
     ),
     (
-        re.compile(
-            f"^x{REPS_SCHEME}\$@{RPE_SCHEME}$"
-        ),  # 3x3$@9 SETS x WEIGHT at RPE
+        re.compile(f"^x{REPS_SCHEME}\$@{RPE_SCHEME}$"),  # 3x3$@9 SETS x WEIGHT at RPE
         SetType.RPE_RAMP,
     ),
     (
@@ -204,15 +202,12 @@ class Exercise:
         if self.is_superset:
             return 0
             x = [
-                max([calculate_e1RM(ws.weight, ws.reps, ws.rpe) for ws in e])
+                max([calculate_e1RM(ws.weight.value, ws.reps, ws.rpe) for ws in e])
                 for e in self.sets_done
             ]
             return x
         x = max(
-            [
-                calculate_e1RM(ws.weight.value, ws.reps, ws.rpe)
-                for ws in self.sets_done
-            ]
+            [calculate_e1RM(ws.weight.value, ws.reps, ws.rpe) for ws in self.sets_done]
         )
         return x
 
@@ -473,17 +468,18 @@ class Exercise:
         vol = 0.0
         if not self.is_superset:
             for s in self.sets_done:
-                if s.reps and s.weight:
-                    vol += s.reps * s.weight
+                if s.reps and s.weight.value:
+                    vol += s.reps * s.weight.value
             return vol
 
     def __repr__(self):
-        return f'{self.name}'
+        return f"{self.name}"
 
     def __str__(self):
         if self.is_superset:
+            return "Supersets are TODO"
             sets_planned = [
-                f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+                f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                 if s != "&"
                 else f" {s} "
                 for e in self.sets_planned
@@ -491,7 +487,7 @@ class Exercise:
             ]
             if self.done:
                 sets_done = [
-                    f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+                    f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                     if s != "&"
                     else f" {s} "
                     for e in self.sets_done
@@ -508,17 +504,17 @@ class Exercise:
             return ret
         if self.done:
             sets_done = [
-                f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+                f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                 for s in self.sets_done
             ]
         else:
             sets_done = "X"
         sets_planned = [
-            f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+            f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
             for s in self.sets_planned
         ]
-        # e1RM = self.e1RM if self.e1RM else 0.0
-        return f'{self.name}:~~{";".join(sets_planned)} | {";".join(sets_done)}'
+        e1RM = self.e1RM if self.e1RM else 0.0
+        return f'{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} | e1RM: {e1RM}'
 
 
 class Session:
@@ -527,9 +523,10 @@ class Session:
         self.date = date
 
     def __repr__(self):
-        ret = f"Session from {self.date}"
+        ret = f"\t\tSession from {self.date}\n"
         for e in self.exercises:
             ret += str(e)
+            ret += " || "
         return ret + "\n"
 
 
@@ -538,7 +535,7 @@ class Microcycle:
         self.sessions = sessions
 
     def __repr__(self):
-        ret = f"Microcycle: "
+        ret = f"\tMicrocycle: \n"
         for s in self.sessions:
             ret += str(s)
         return ret + "\n"
@@ -549,7 +546,7 @@ class Mesocycle:
         self.micros = micros
 
     def __repr__(self):
-        ret = f"Mesocycle: "
+        ret = f"Mesocycle: \n"
         for m in self.micros:
             ret += str(m)
         return ret + "\n"
@@ -572,7 +569,7 @@ def get_session(planned_cells, done_cells):
 
 def get_microcycles(weeks_split):
     micros = []
-    pattern = re.compile("^[Dd][0-9]+") # Ignore GPP column for now
+    pattern = re.compile("^[Dd][0-9]+")  # Ignore GPP column for now
     # breakpoint()
     for c in weeks_split:
         sessions = []
@@ -605,10 +602,12 @@ def get_mesocycle(block, last_row):
     # why TF block iterator is here
     for i, c in enumerate(meso_range):
         if re.match(pattern, c.value):
-            if W_row: # If we find a row with W[0-9]
-                weeks_split.append(meso_range[W_row : i - 1]) # Save microcycles from former week row to row before current
+            if W_row:  # If we find a row with W[0-9]
+                weeks_split.append(
+                    meso_range[W_row : i - 1]
+                )  # Save microcycles from former week row to row before current
             W_row = i
-        if i == len(meso_range) - 1 and W_row: # If we reach the end of sheet 
+        if i == len(meso_range) - 1 and W_row:  # If we reach the end of sheet
             weeks_split.append(meso_range[W_row : i - 1])
     # logger.debug(weeks_split)
     micros = get_microcycles(weeks_split)
@@ -630,11 +629,10 @@ if __name__ == "__main__":
     blocks = wksh.findall(re.compile("^[Bb][0-9]+$"), in_column=0)
     mesocycles = []
     for i, block in enumerate(blocks):
-    # next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
-    # TODO send mesocycle height to the get_ function
-    # change to get_mesocycle that parses only one, move height management to upper level
+        # next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
+        # TODO send mesocycle height to the get_ function
+        # change to get_mesocycle that parses only one, move height management to upper level
         last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
         break
-    breakpoint()
     print(mesocycles[0])
