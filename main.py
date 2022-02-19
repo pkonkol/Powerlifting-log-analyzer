@@ -11,6 +11,7 @@ logging.basicConfig(
     filename="pla.log",
     format="%(levelname)s:%(name)s:%(lineno)s  %(message)s",
     level=logging.DEBUG,
+    filemode='w',
 )
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,140 @@ PERCENTAGE_SCHEME = "(?P<percentage>[1-9][0-9]?|100)"
 REPS_SCHEME = "(?P<reps>[0-9]+)"
 SETS_SCHEME = "(?P<sets>[0-9]+)"
 
+class SetType(Enum):
+    NONE = -1
+    RPE = 0
+    WEIGHT = 1
+    PERCENT_1RM = 2
+    LOAD_DROP = 3
+    FATIGUE_PERCENT = 4
+    RPE_RAMP = 5
+
+SCHEMES_PLANNED = (
+    (re.compile(f"^x{REPS_SCHEME}@{RPE_SCHEME}$"), SetType.RPE),  # x5@9 REPS at RPE
+    (
+        re.compile(f"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$"),
+        SetType.PERCENT_1RM,
+    ),  # 5x5@90% SETS of REPS at PERCENTAGE
+    (
+        re.compile(
+            f"^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$"
+        ),  # 80%@8 PERCENTAGE at RPE
+        SetType.PERCENT_1RM,
+    ),
+    (
+        re.compile(
+            f"^x{REPS_SCHEME}{RPE_MULTISET_SCHEME}$"
+        ),  # x5@8@9 REPS at RPE multiple #needs furhter processing
+        SetType.RPE,
+    ),
+    (
+        re.compile(
+            f"^{SETS_SCHEME}x{REPS_SCHEME}\^@{RPE_SCHEME}$"
+        ),  # 4x4^@7 SETS of REPS starting at RPE
+        SetType.RPE,
+    ),
+    (
+        re.compile(f"^{SETS_SCHEME}x@{RPE_SCHEME}$"),  #  3x@9 number of SETS at RPE
+        SetType.RPE,
+    ),
+    (
+        re.compile(f"^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$"),  # 80%x5 REPS at %1RM
+        SetType.PERCENT_1RM,
+    ),
+    (
+        re.compile(
+            f"^{SETS_SCHEME}x{REPS_SCHEME}V{PERCENTAGE_SCHEME}%$"
+        ),  # 3x3V90% SETS of REPS at PERCENTAGE
+        SetType.LOAD_DROP,
+    ),
+    (
+        re.compile(
+            f"^x{REPS_SCHEME}\$@{RPE_SCHEME}$"
+        ),  # 3x3$@9 SETS x WEIGHT at RPE
+        SetType.RPE_RAMP,
+    ),
+    (
+        re.compile(
+            f"^{SETS_SCHEME}x{REPS_SCHEME}$"
+        ),  # 3x8 SETS of REPS starting at RPE
+        SetType.NONE,
+    ),
+    (
+        re.compile(
+            f"^x{REPS_SCHEME}@{RPE_SCHEME}\-{PERCENTAGE_SCHEME}%$"
+        ),  # x4@9-7% SETS of REPS starting at RPE
+        SetType.FATIGUE_PERCENT,
+    ),
+    (
+        re.compile(
+            f"^{WEIGHT_SCHEME}@{RPE_SCHEME}$"
+        ),  # 160lbs@9 SETS of REPS starting at RPE
+        SetType.RPE,
+    ),
+    (
+        re.compile(
+            f"^{WEIGHT_SCHEME}/{REPS_SCHEME}$"
+        ),  # 150x5 SETS of REPS starting at RPE
+        SetType.WEIGHT,
+    ),
+    (
+        re.compile(
+            f"^{SETS_SCHEME}[xX]$"
+        ),  # Just number of sets, eg. '5x'. For low priority exercises
+        SetType.NONE,
+    ),
+)
+SCHEMES_DONE = (
+    (
+        re.compile(
+            f"^{WEIGHT_SCHEME}x{REPS_SCHEME}@{RPE_SCHEME}$"
+        ),  # weightXreps at RPE
+        SetType.WEIGHT,
+    ),
+    (
+        re.compile(
+            f"^{WEIGHT_SCHEME}@{RPE_SCHEME}$"
+        ),  #'weight at RPE (presumed same set number as planned)',
+        SetType.WEIGHT,
+    ),
+    (
+        re.compile(
+            f"^{WEIGHT_SCHEME}{RPE_MULTISET_SCHEME}$"
+        ),  # Multiple Weight@Rpe sets written in one string
+        SetType.WEIGHT,
+    ),
+    (
+        re.compile(
+            f"^{WEIGHT_SCHEME}x{REPS_SCHEME}" f"{RPE_MULTISET_SCHEME}$"
+        ),  # Multiple WeightXReps@Rpe sets written in one string
+        SetType.WEIGHT,
+    ),
+    (
+        re.compile(f"^{SETS_SCHEME}x{REPS_SCHEME}" f"(?:\/|x|@){WEIGHT_SCHEME}$"),
+        SetType.WEIGHT,
+    ),
+    (re.compile("^ *(?P<undone>[Xx]?) *$"), SetType.NONE),  # exercise not done
+    # (re.compile("^(?P<undone> ?)$"), SetType.NONE),  # exercise not done
+    (re.compile("^ *(?P<done>[Vv]+) *$"), SetType.NONE),  # Done, V for each set
+    (
+        re.compile(f"^{WEIGHT_SCHEME}[Xx][Vv]+$"),
+        SetType.WEIGHT,
+    ),  # Kilograms done for as many sets as "v's" after weight
+    # eg. 40kgxVVVVV, reps presumed as planned
+    # TODO legit support for this and related in matched set parser
+    (
+        re.compile(
+            f"^(?P<multi_reps>(?:{REPS_SCHEME}(?:,|@))+){WEIGHT_SCHEME}$"
+        ),  # Multiple sets at given weight
+        SetType.WEIGHT,
+    ),
+    (
+        re.compile(f"^{REPS_SCHEME}x{WEIGHT_SCHEME}$"),  # Reps at weight
+        SetType.WEIGHT,
+    ),
+)
+
 
 class WeightUnit(Enum):
     KG = 1
@@ -36,14 +171,6 @@ class WeightUnit(Enum):
 
 
 class Exercise:
-    class SetType(Enum):
-        NONE = -1
-        RPE = 0
-        WEIGHT = 1
-        PERCENT_1RM = 2
-        LOAD_DROP = 3
-        FATIGUE_PERCENT = 4
-        RPE_RAMP = 5
 
     DefaultUnit = WeightUnit.KG
     Weight = namedtuple(
@@ -54,157 +181,36 @@ class Exercise:
         ),
     )
     Set = namedtuple("Set", ("type", "reps", "weight", "rpe"))
-    schemes_planned = (
-        (re.compile(f"^x{REPS_SCHEME}@{RPE_SCHEME}$"), SetType.RPE),  # x5@9 REPS at RPE
-        (
-            re.compile(f"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$"),
-            SetType.PERCENT_1RM,
-        ),  # 5x5@90% SETS of REPS at PERCENTAGE
-        (
-            re.compile(
-                f"^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$"
-            ),  # 80%@8 PERCENTAGE at RPE
-            SetType.PERCENT_1RM,
-        ),
-        (
-            re.compile(
-                f"^x{REPS_SCHEME}{RPE_MULTISET_SCHEME}$"
-            ),  # x5@8@9 REPS at RPE multiple #needs furhter processing
-            SetType.RPE,
-        ),
-        (
-            re.compile(
-                f"^{SETS_SCHEME}x{REPS_SCHEME}\^@{RPE_SCHEME}$"
-            ),  # 4x4^@7 SETS of REPS starting at RPE
-            SetType.RPE,
-        ),
-        (
-            re.compile(f"^{SETS_SCHEME}x@{RPE_SCHEME}$"),  #  3x@9 number of SETS at RPE
-            SetType.RPE,
-        ),
-        (
-            re.compile(f"^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$"),  # 80%x5 REPS at %1RM
-            SetType.PERCENT_1RM,
-        ),
-        (
-            re.compile(
-                f"^{SETS_SCHEME}x{REPS_SCHEME}V{PERCENTAGE_SCHEME}%$"
-            ),  # 3x3V90% SETS of REPS at PERCENTAGE
-            SetType.LOAD_DROP,
-        ),
-        (
-            re.compile(
-                f"^x{REPS_SCHEME}\$@{RPE_SCHEME}$"
-            ),  # 3x3$@9 SETS x WEIGHT at RPE
-            SetType.RPE_RAMP,
-        ),
-        (
-            re.compile(
-                f"^{SETS_SCHEME}x{REPS_SCHEME}$"
-            ),  # 3x8 SETS of REPS starting at RPE
-            SetType.NONE,
-        ),
-        (
-            re.compile(
-                f"^x{REPS_SCHEME}@{RPE_SCHEME}\-{PERCENTAGE_SCHEME}%$"
-            ),  # x4@9-7% SETS of REPS starting at RPE
-            SetType.FATIGUE_PERCENT,
-        ),
-        (
-            re.compile(
-                f"^{WEIGHT_SCHEME}@{RPE_SCHEME}$"
-            ),  # 160lbs@9 SETS of REPS starting at RPE
-            SetType.RPE,
-        ),
-        (
-            re.compile(
-                f"^{WEIGHT_SCHEME}/{REPS_SCHEME}$"
-            ),  # 150x5 SETS of REPS starting at RPE
-            SetType.WEIGHT,
-        ),
-        (
-            re.compile(
-                f"^{SETS_SCHEME}[xX]$"
-            ),  # Just number of sets, eg. '5x'. For low priority exercises
-            SetType.NONE,
-        ),
-    )
-    schemes_done = (
-        (
-            re.compile(
-                f"^{WEIGHT_SCHEME}x{REPS_SCHEME}@{RPE_SCHEME}$"
-            ),  # weightXreps at RPE
-            SetType.WEIGHT,
-        ),
-        (
-            re.compile(
-                f"^{WEIGHT_SCHEME}@{RPE_SCHEME}$"
-            ),  #'weight at RPE (presumed same set number as planned)',
-            SetType.WEIGHT,
-        ),
-        (
-            re.compile(
-                f"^{WEIGHT_SCHEME}{RPE_MULTISET_SCHEME}$"
-            ),  # Multiple Weight@Rpe sets written in one string
-            SetType.WEIGHT,
-        ),
-        (
-            re.compile(
-                f"^{WEIGHT_SCHEME}x{REPS_SCHEME}" f"{RPE_MULTISET_SCHEME}$"
-            ),  # Multiple WeightXReps@Rpe sets written in one string
-            SetType.WEIGHT,
-        ),
-        (
-            re.compile(f"^{SETS_SCHEME}x{REPS_SCHEME}" f"(?:\/|x|@){WEIGHT_SCHEME}$"),
-            SetType.WEIGHT,
-        ),
-        (re.compile("^ *(?P<undone>[Xx]?) *$"), SetType.NONE),  # exercise not done
-        # (re.compile("^(?P<undone> ?)$"), SetType.NONE),  # exercise not done
-        (re.compile("^ *(?P<done>[Vv]+) *$"), SetType.NONE),  # Done, V for each set
-        (
-            re.compile(f"^{WEIGHT_SCHEME}[Xx][Vv]+$"),
-            SetType.WEIGHT,
-        ),  # Kilograms done for as many sets as "v's" after weight
-        # eg. 40kgxVVVVV, reps presumed as planned
-        # TODO legit support for this and related in matched set parser
-        (
-            re.compile(
-                f"^(?P<multi_reps>(?:{REPS_SCHEME}(?:,|@))+){WEIGHT_SCHEME}$"
-            ),  # Multiple sets at given weight
-            SetType.WEIGHT,
-        ),
-        (
-            re.compile(f"^{REPS_SCHEME}x{WEIGHT_SCHEME}$"),  # Reps at weight
-            SetType.WEIGHT,
-        ),
-    )
 
     def __init__(self, planned_str, done_str, notes):
-        logger.debug(self.SetType.RPE)
-        logger.debug(self.SetType)
+        logger.debug(SetType.RPE)
+        logger.debug(SetType)
 
         self.done = True
         self.is_superset = False
         self.workout_from_string(planned_str, done_str)
         self.notes = notes
         self.workset_volume = 0
-        self.categories = {}
 
-        # if self.done:
-        #     self.e1RM = self.get_e1RM()
-        # else:
-        #     self.e1RM = 0
+        if self.done:
+            self.e1RM = self.get_e1RM()
+        else:
+            self.e1RM = 0
 
     def get_e1RM(self):
+        logger.debug(self.name)
+        logger.debug(self.sets_done)
+        logger.debug((ws for ws in self.sets_done))
         if self.is_superset:
+            return 0
             x = [
-                max([calculate_e1RM(ws["weight"], ws["reps"], ws["RPE"]) for ws in e])
+                max([calculate_e1RM(ws.weight, ws.reps, ws.rpe) for ws in e])
                 for e in self.sets_done
             ]
             return x
         x = max(
             [
-                calculate_e1RM(ws["weight"], ws["reps"], ws["RPE"])
+                calculate_e1RM(ws.weight.value, ws.reps, ws.rpe)
                 for ws in self.sets_done
             ]
         )
@@ -276,7 +282,7 @@ class Exercise:
         logger.debug(
             f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}"
         )
-        schemes = self.schemes_done
+        schemes = SCHEMES_DONE
         sets_str = re.split(" |;", sets_str.strip())
         for set_str in sets_str:
             while True:
@@ -310,7 +316,7 @@ class Exercise:
 
     def sets_planned_from_string(self, sets_planned_str):
         logger.debug(f"----------- Parsing sets planned from {sets_planned_str}")
-        schemes = self.schemes_planned
+        schemes = SCHEMES_PLANNED
 
         sets_planned_str = sets_planned_str.strip()
         if sets_planned_str == "":
@@ -400,11 +406,11 @@ class Exercise:
         elif "bw" in groupdict and groupdict["bw"] == "BW":
             getdict["unit"] = WeightUnit.BW
         elif getdict["percentage"]:
-            if getdict["set_type"] == self.SetType.PERCENT_1RM:
+            if getdict["set_type"] == SetType.PERCENT_1RM:
                 getdict["unit"] = WeightUnit.PERCENT_1RM
-            elif getdict["set_type"] == self.SetType.LOAD_DROP:
+            elif getdict["set_type"] == SetType.LOAD_DROP:
                 getdict["unit"] = -1
-            elif getdict["set_type"] == self.SetType.FATIGUE_PERCENT:
+            elif getdict["set_type"] == SetType.FATIGUE_PERCENT:
                 getdict["unit"] = None
             else:
                 raise StandardError("Unsupported Set Type for percentage")
@@ -414,7 +420,7 @@ class Exercise:
                 _set = self.create_set_object(**getdict)
                 sets.append(_set)
 
-                if getdict["set_type"] == self.SetType.RPE:
+                if getdict["set_type"] == SetType.RPE:
                     if "unit" in getdict and getdict["unit"] == WeightUnit.BW:
                         continue
                     getdict.update(
@@ -422,12 +428,12 @@ class Exercise:
                             "percentage": 1.0,
                             "unit": -1,
                             "rpe": None,
-                            "set_type": self.SetType.LOAD_DROP,
+                            "set_type": SetType.LOAD_DROP,
                         }
                     )
                     continue
 
-                if getdict["set_type"] == self.SetType.LOAD_DROP:
+                if getdict["set_type"] == SetType.LOAD_DROP:
                     getdict["unit"] -= 1
         elif "multi_rpe" in groupdict:
             for rpe in getdict["multi_rpe"]:
@@ -467,14 +473,17 @@ class Exercise:
         vol = 0.0
         if not self.is_superset:
             for s in self.sets_done:
-                if s["reps"] and s["weight"]:
-                    vol += s["reps"] * s["weight"]
+                if s.reps and s.weight:
+                    vol += s.reps * s.weight
             return vol
 
     def __repr__(self):
+        return f'{self.name}'
+
+    def __str__(self):
         if self.is_superset:
             sets_planned = [
-                f"{s['weight'] or ''}x{s['reps'] or ''}" f"@{s['RPE'] or ''}"
+                f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                 if s != "&"
                 else f" {s} "
                 for e in self.sets_planned
@@ -482,7 +491,7 @@ class Exercise:
             ]
             if self.done:
                 sets_done = [
-                    f"{s['weight'] or ''}x{s['reps'] or ''}" f"@{s['RPE'] or ''}"
+                    f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                     if s != "&"
                     else f" {s} "
                     for e in self.sets_done
@@ -492,27 +501,24 @@ class Exercise:
                 sets_done = "X"
             ret = (
                 f"{'&'.join(self.name)}: {';'.join(sets_planned)}"
-                f"| {';'.join(sets_done)} e1RM:"
-                f"{';'.join(['{:4.2f}'.format(f) for f in self.e1RM])}",
+                f"| {';'.join(sets_done)} e1RM:",
+                # f"{';'.join(['{:4.2f}'.format(f) for f in self.e1RM])}",
                 0,
             )
             return ret
         if self.done:
             sets_done = [
-                f"{s['weight'] or ''}x{s['reps'] or ''}" f"@{s['RPE'] or ''}"
+                f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                 for s in self.sets_done
             ]
         else:
             sets_done = "X"
         sets_planned = [
-            f"{s['weight'] or ''}x{s['reps'] or ''}" f"@{s['RPE'] or ''}"
+            f"{s.weight or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
             for s in self.sets_planned
         ]
-        e1RM = self.e1RM if self.e1RM else 0.0
-        return (
-            f'{self.name}: {";".join(sets_planned)} ' f'| {";".join(sets_done)}',
-            e1RM,
-        )
+        # e1RM = self.e1RM if self.e1RM else 0.0
+        return f'{self.name}:~~{";".join(sets_planned)} | {";".join(sets_done)}'
 
 
 class Session:
@@ -567,17 +573,17 @@ def get_session(planned_cells, done_cells):
 def get_microcycles(weeks_split):
     micros = []
     pattern = re.compile("^[Dd][0-9]+") # Ignore GPP column for now
-    for i, m in enumerate(weeks_split):
+    # breakpoint()
+    for c in weeks_split:
         sessions = []
-        for c in weeks_split:
-            sessions_row = [e for e in c if e.row == c[0].row]
-            print(sessions_row)
-            for x in sessions_row:
-                if re.match(pattern, x.value):
-                    planned_cells = [i for i in c if i.col == x.col and i.row >= x.row]
-                    done_cells = [i for i in c if i.col == x.col + 1 and i.row >= x.row]
-                    session = get_session(planned_cells, done_cells)
-                    sessions.append(session)
+        sessions_row = [e for e in c if e.row == c[0].row]
+        logger.debug(sessions_row)
+        for x in sessions_row:
+            if re.match(pattern, x.value):
+                planned_cells = [i for i in c if i.col == x.col and i.row >= x.row]
+                done_cells = [i for i in c if i.col == x.col + 1 and i.row >= x.row]
+                session = get_session(planned_cells, done_cells)
+                sessions.append(session)
         micros.append(Microcycle(sessions))
     return micros
 
@@ -630,4 +636,5 @@ if __name__ == "__main__":
         last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
         break
+    breakpoint()
     print(mesocycles[0])
