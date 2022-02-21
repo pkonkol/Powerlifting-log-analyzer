@@ -185,11 +185,10 @@ class Exercise:
         logger.debug(SetType)
 
         self.done = True
-        self.is_superset = False
+        self.is_superset = False # TODO remove this if _next_parallel keeps the info
         self._next_parallel_exercise = None
         self.workout_from_string(planned_str, done_str)
         self.notes = notes
-        self.workset_volume = 0
 
         if self.done:
             self.e1RM = self.get_e1RM()
@@ -203,6 +202,8 @@ class Exercise:
         if (self.is_superset 
 #TMP fix, TODO if done there are always sets (fails on superset)
 # "vvvvv" done pattern not matched correctly
+# may jus throw this away for supersets anyway, i do just easy supplemental work
+# on supersets anyway
             or self.sets_done == []): 
             return 0
             x = [
@@ -294,7 +295,6 @@ class Exercise:
         logger.debug(
             f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}"
         )
-        schemes = SCHEMES_DONE
         sets_str = re.split(" |;", sets_str.strip())
         for set_str in sets_str:
             while True:
@@ -302,7 +302,7 @@ class Exercise:
                 try:
                     match = [
                         (pattern[0].match(set_str), index + 1, pattern[1])
-                        for index, pattern in enumerate(schemes)
+                        for index, pattern in enumerate(SCHEMES_DONE)
                         if pattern[0].match(set_str)
                     ][0]
                 except IndexError as e:
@@ -328,7 +328,6 @@ class Exercise:
 
     def sets_planned_from_string(self, sets_planned_str):
         logger.debug(f"----------- Parsing sets planned from {sets_planned_str}")
-        schemes = SCHEMES_PLANNED
 
         sets_planned_str = sets_planned_str.strip()
         if sets_planned_str == "":
@@ -342,7 +341,7 @@ class Exercise:
                 try:
                     match = [
                         (pattern[0].match(set_str), index + 1, pattern[1])
-                        for index, pattern in enumerate(schemes)
+                        for index, pattern in enumerate(SCHEMES_PLANNED)
                         if pattern[0].match(set_str)
                     ][0]
                 except IndexError as e:
