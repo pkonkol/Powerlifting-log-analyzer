@@ -186,6 +186,7 @@ class Exercise:
 
         self.done = True
         self.is_superset = False
+        self._next_parallel_exercise = None
         self.workout_from_string(planned_str, done_str)
         self.notes = notes
         self.workset_volume = 0
@@ -199,7 +200,10 @@ class Exercise:
         logger.debug(self.name)
         logger.debug(self.sets_done)
         logger.debug((ws for ws in self.sets_done))
-        if self.is_superset:
+        if (self.is_superset 
+#TMP fix, TODO if done there are always sets (fails on superset)
+# "vvvvv" done pattern not matched correctly
+            or self.sets_done == []): 
             return 0
             x = [
                 max([calculate_e1RM(ws.weight.value, ws.reps, ws.rpe) for ws in e])
@@ -220,26 +224,38 @@ class Exercise:
         )
         exercise_str, planned_str = first_col_str.split(":")
         if "&" in exercise_str:
+            logger.debug(f"Found superset sign in {exercise_str}")
             self.is_superset = True
-            exercise_strs = exercise_str.split("&")
-            planned_strs = planned_str.split("&")
-            second_col_strs = second_col_str.split("&")
-            second_col_strs = [s.strip() for s in second_col_strs]
+            exercise_strs = exercise_str.split("&", 1)
+            # Maybe just reduce code by acknowledging the superset and
+            # letting the normal workflow take over
+            if "&" in planned_str:
+                planned_strs = planned_str.split("&", 1)
+            else:
+                planned_strs = [planned_str, planned_str] #this idiocy twice...
+            if "&" in second_col_str:
+                second_col_strs = second_col_str.split("&", 1)
+                second_col_strs = [s.strip() for s in second_col_strs]
+            else:
+                # Retarded but it integrates with less if's with split on & (^^^)
+                # TODO write it well
+                second_col_strs = [second_col_str, second_col_str]
 
-            self.name, self.modifiers, self.sets_planned, self.sets_done = (
-                [],
-                [],
-                [],
-                [],
+            if self._next_parallel_exercise == None:
+                logger.debug(f"No _next_parallel_exercise for {exercise_strs}"
+                             f";; {planned_strs};; {second_col_strs}")
+                name, modifiers = self.exercise_from_string(exercise_strs[0])
+                self.name = name
+                self.modifiers = modifiers
+                self.sets_planned = self.sets_planned_from_string(planned_strs[0])
+                self.sets_done = self.sets_done_from_string(second_col_strs[0])
+
+            # Create new Exercise object with strings stripped from data leftmost of &
+            self._next_parallel_exercise = Exercise(
+                f"{exercise_strs[1]}:{planned_strs[1]}",
+                second_col_strs[1],
+                "",
             )
-            for e_str, p_str, s_c_str in zip(
-                exercise_strs, planned_strs, second_col_strs
-            ):
-                name, modifiers = self.exercise_from_string(e_str)
-                self.name.append(e_str)
-                self.modifiers.append(modifiers)
-                self.sets_planned.append(self.sets_planned_from_string(p_str))
-                self.sets_done.append(self.sets_done_from_string(s_c_str))
             return
 
         self.name, self.modifiers = self.exercise_from_string(exercise_str)
@@ -263,7 +279,8 @@ class Exercise:
             for k in m:
                 name = re.sub(f" \w+/{k}(?: |$)", " ", name)
 
-        return (name.rstrip(), modifiers)
+        # why was there rstrip instead of strip()? It should work
+        return (name.strip(), modifiers)
 
     def sets_done_from_string(self, sets_str):
         logger.debug(f"-----------Parsing sets done from {sets_str}")
@@ -462,6 +479,11 @@ class Exercise:
         return self.Set(set_type, reps, w, rpe)
 
     def match_sets_planned_done(self):
+        """
+        If len() of done and planned sets is the same and there are no rep ranges on done
+        sets then presume that done_set[i] corresponds to planned_set[i]
+        TODO soon
+        """
         pass
 
     def volume(self):
@@ -522,7 +544,7 @@ class Session:
         self.exercises = exercises
         self.date = date
 
-    def __repr__(self):
+    def __str__(self):
         ret = f"\t\tSession from {self.date}\n"
         for e in self.exercises:
             ret += str(e)
@@ -534,7 +556,7 @@ class Microcycle:
     def __init__(self, sessions: List[Session]):
         self.sessions = sessions
 
-    def __repr__(self):
+    def __str__(self):
         ret = f"\tMicrocycle: \n"
         for s in self.sessions:
             ret += str(s)
@@ -542,12 +564,12 @@ class Microcycle:
 
 
 class Mesocycle:
-    def __init__(self, micros: List[Microcycle]):
-        self.micros = micros
+    def __init__(self, microcycles: List[Microcycle]):
+        self.microcycles = microcycles
 
-    def __repr__(self):
+    def __str__(self):
         ret = f"Mesocycle: \n"
-        for m in self.micros:
+        for m in self.microcycles:
             ret += str(m)
         return ret + "\n"
 
@@ -635,4 +657,6 @@ if __name__ == "__main__":
         last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
         break
+    # breakpoint()
     print(mesocycles[0])
+    logger.info(f"Parsed mesocycle[0]: {mesocycles[0]}")
