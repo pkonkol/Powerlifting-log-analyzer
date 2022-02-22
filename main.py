@@ -497,32 +497,6 @@ class Exercise:
         return f"{self.name}"
 
     def __str__(self):
-        if self.is_superset:
-            return "Supersets are TODO"
-            sets_planned = [
-                f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
-                if s != "&"
-                else f" {s} "
-                for e in self.sets_planned
-                for s in e + ["&"]
-            ]
-            if self.done:
-                sets_done = [
-                    f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
-                    if s != "&"
-                    else f" {s} "
-                    for e in self.sets_done
-                    for s in e + ["&"]
-                ]
-            else:
-                sets_done = "X"
-            ret = (
-                f"{'&'.join(self.name)}: {';'.join(sets_planned)}"
-                f"| {';'.join(sets_done)} e1RM:",
-                # f"{';'.join(['{:4.2f}'.format(f) for f in self.e1RM])}",
-                0,
-            )
-            return ret
         if self.done:
             sets_done = [
                 f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
@@ -535,7 +509,9 @@ class Exercise:
             for s in self.sets_planned
         ]
         e1RM = self.e1RM if self.e1RM else 0.0
-        return f'{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} | e1RM: {e1RM}'
+        if self._next_parallel_exercise:
+            return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} & ' + str(self._next_parallel_exercise)
+        return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} | e1RM: {e1RM} \n'
 
 
 class Session:
@@ -547,7 +523,6 @@ class Session:
         ret = f"\t\tSession from {self.date}\n"
         for e in self.exercises:
             ret += str(e)
-            ret += " || "
         return ret + "\n"
 
 
