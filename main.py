@@ -43,8 +43,9 @@ class Exercise:
 
         self.done = True
         self.is_superset = False # TODO remove this if _next_parallel keeps the info
-        self._next_parallel_exercise = None
-        self.workout_from_string(planned_str, done_str)
+        # only problem is with last superset exercise not knowing it's in superset
+        self._next_parallel_exercise = None 
+        self._workout_from_string(planned_str, done_str)
         self.notes = notes
 
         if self.done:
@@ -73,7 +74,7 @@ class Exercise:
         )
         return x
 
-    def workout_from_string(self, first_col_str, second_col_str):
+    def _workout_from_string(self, first_col_str, second_col_str):
         # First column contains exercise with modifiers and planned sets,
         # second column contains done sets
         logger.debug("PARSING WORKOUT" + "-" * 20)
@@ -81,7 +82,7 @@ class Exercise:
             f"first_col_str: {first_col_str}; second_col_str: {second_col_str}"
         )
         exercise_str, planned_str = first_col_str.split(":")
-        if "&" in exercise_str:
+        if "&" in exercise_str: # Superset manual handling
             logger.debug(f"Found superset sign in {exercise_str}")
             self.is_superset = True
             exercise_strs = exercise_str.split("&", 1)
@@ -102,11 +103,11 @@ class Exercise:
             if self._next_parallel_exercise == None:
                 logger.debug(f"No _next_parallel_exercise for {exercise_strs}"
                              f";; {planned_strs};; {second_col_strs}")
-                name, modifiers = self.exercise_from_string(exercise_strs[0])
+                name, modifiers = self._exercise_from_string(exercise_strs[0])
                 self.name = name
                 self.modifiers = modifiers
-                self.sets_planned = self.sets_planned_from_string(planned_strs[0])
-                self.sets_done = self.sets_done_from_string(second_col_strs[0])
+                self.sets_planned = self._sets_planned_from_string(planned_strs[0])
+                self.sets_done = self._sets_done_from_string(second_col_strs[0])
 
             # Create new Exercise object with strings stripped from data leftmost of &
             self._next_parallel_exercise = Exercise(
@@ -116,11 +117,11 @@ class Exercise:
             )
             return
 
-        self.name, self.modifiers = self.exercise_from_string(exercise_str)
-        self.sets_planned = self.sets_planned_from_string(planned_str)
-        self.sets_done = self.sets_done_from_string(second_col_str)
+        self.name, self.modifiers = self._exercise_from_string(exercise_str)
+        self.sets_planned = self._sets_planned_from_string(planned_str)
+        self.sets_done = self._sets_done_from_string(second_col_str)
 
-    def exercise_from_string(self, exercise_str):
+    def _exercise_from_string(self, exercise_str):
         logger.debug(f"Parsing exercise from {exercise_str}")
         modifier_schemes = (
             re.compile(" w/(?P<with>[a-zA-Z0-9]+)"),  #'with x',
@@ -132,15 +133,13 @@ class Exercise:
         name = exercise_str
         modifiers = [pattern.findall(name) for pattern in modifier_schemes]
         logging.debug(f"Modifiers: {modifiers}")
-
         for m in modifiers:
-            for k in m:
+            for k in m: # Remove modifiers from name
                 name = re.sub(f" \w+/{k}(?: |$)", " ", name)
-
         # why was there rstrip instead of strip()? It should work
         return (name.strip(), modifiers)
 
-    def sets_done_from_string(self, sets_str):
+    def _sets_done_from_string(self, sets_str):
         logger.debug(f"-----------Parsing sets done from {sets_str}")
         start_time, sets_str, end_time = (
             lambda m: (
@@ -172,7 +171,7 @@ class Exercise:
                 f"match={match}, groups={match[0].groups()}"
             )
 
-        sets_done = self.parse_matched_set(match)
+        sets_done = self._parse_matched_set(match)
         if sets_done == (0,):
             self.done = False
             sets_done = []
@@ -183,7 +182,7 @@ class Exercise:
         logger.debug("Finish sets_done_from_string-----------")
         return sets_done
 
-    def sets_planned_from_string(self, sets_planned_str):
+    def _sets_planned_from_string(self, sets_planned_str):
         logger.debug(f"----------- Parsing sets planned from {sets_planned_str}")
 
         sets_planned_str = sets_planned_str.strip()
@@ -211,11 +210,11 @@ class Exercise:
                 f"match={match}, groups={match[0].groups()}"
             )
 
-        sets_planned = self.parse_matched_set(match)
+        sets_planned = self._parse_matched_set(match)
         logger.debug("Finish sets_planned_from_string-----------")
         return sets_planned
 
-    def parse_matched_set(self, match):
+    def _parse_matched_set(self, match):
         groupdict = match[0].groupdict()
         if "undone" in groupdict:
             return (0,)

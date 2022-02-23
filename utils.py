@@ -9,11 +9,9 @@ with open(DATASETS, 'r') as ds:
     DATA = json.load(ds)
 
 def roundWithBias(x):
-    y = round(math.ceil(x)-x,1)
-    if y > 0.5:
-        return round(x,1)-(1-y)
-    else:
-        return round(x,1)+y
+    # round to 0.5kgs as it's usually what people have
+    # TODO round to an arbitrary number
+    return (round(x * 2))/2
 
 def kg_to_lbs(kg):
     return roundWithBias(kg*2.204)

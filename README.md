@@ -8,10 +8,17 @@ and easily write trainings logs abundant in information.
 
 # Usage
 
-## run.py syntax
+## main.py
+1. Set up gspread api credentials as in documentation
+1. Set up your spreadsheets name and tab name in main.py
+1. Run
 ```
-python run.py -i <source spreadsheet> [-u {kg|lbs}]
-
+python main.py
+```
+## tests
+```
+python tests/exercise.py
+python tests/utils.py
 ```
 
 ### Exercise syntax
@@ -28,7 +35,7 @@ Comp BP w/slingshot : x3@9 |
 | | |
 | - | - |
 | Weight | {`<`float:weight> {kg &#124; lbs} &#124;BW}
-| RPE | {5 &#124;5.5 &#124;6 &#124;... &#124;10 &#124;9.(3) &#124;9.(6)}
+| RPE | {5 &#124;5.5 &#124;6 &#124;... &#124;10 &#124;9.3 &#124;9.6}
 | 1RMpercentage | `0-100.0`
 
 ### Exercise modifiers syntax
@@ -67,8 +74,8 @@ Scheme | Example | Description
 `<`sets>x<reps>{x &#124;@ &#124;/} `<`weight> | 3x10/20kg | ""
 `<reps>x<weight>` | 10x100kg | ""
 `[Xx]` | x | No sets were done
-`[Vv]` | V | Exercise done as planned
-`[Vv]{2,}` | vvvvv | As many sets as v's done (5 in the example)
+`[V]` | V | Exercise done as planned (TODO generate all sets?)
+`[v]{1,}` | vvvvv | As many sets as v's done (5 in the example)
 `<weight>X[Vv]+` | 40kgXvvvv | As many sets as v's done with given weight (4 in the example)
 `(<reps>,)+@<weight>` | 5,5,4,4,3@BW | Varied number of reps at given weight
 
@@ -76,19 +83,22 @@ Scheme | Example | Description
 Exercise planned column scheme | Example | Description
 ------ | ------- | -----------
 `<exercise_name> (& <exercise_name>)+ : <planned_sets> (& <planned_sets>)+` | `Lateral raise & leg raise: 3x8 & 3x12` | ""
-`<exercise_name> (& <exercise_name>)+ : <planned_sets> &&` | `Lateral raise & leg raise: 3x12 &&` | The same planned sets scheme will be applied to both exercises
+`<exercise_name> (& <exercise_name>)+ : <planned_sets> ` | `Lateral raise & leg raise: 3x12 ` | The same planned sets scheme will be applied to both exercises
 
 Sets done column scheme | Example | Description
 ------ | ------- | -----------
 `<sets_done> (& <sets_done>)+ `| `2x8/20kg 8x15kg & 3x8/100kg` | ""
-`<sets_done> &&` | `3x8/20kg &&` | The same done sets will be applied to both exercises
+`<sets_done> &&` | `3x8/20kg &&` | The same done sets will be applied to both exercises (TODO really?)
 
 
 
-
+## Naming
+**B\d+** for training **Block**
+**M\d+** for training **Microcycle**
+**S\d+** for training **Session**
 ## Microcycle syntax
 
-| D1 | `<date> [@ <place>]` | D2 | `<date> [@ <place>]` | ...| GPP | -- |
+| S1 | `<date> [@ <place>]` | S2 | `<date> [@ <place>]` | ...| GPP | -- |
 | -- | ------ | -- | ------ | -- | -- | -- |
 | Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... | Bouldering | 01.02.03 18:00-20:00 |
 | Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... | . | . |
@@ -99,14 +109,14 @@ Sets done column scheme | Example | Description
 
 ## Mesocycle syntax
 
-| Mesocycle: [name] | `<date_start>` | |
+| B1 [: name] | `<date_start>` | |
 | ----------------- |-|-|
-| W1 | Microcycle#1 ->
+| M1 | Microcycle#1 ->
 | [date] | \/
 | . |
 | . |
 | . |
-| W2 | Microcycle#2 ->
+| M2 | Microcycle#2 ->
 | [date] | \/
 | . |
 | . |

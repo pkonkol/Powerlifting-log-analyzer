@@ -2,7 +2,7 @@ import re
 from enum import Enum
 
 RPE_SCHEME = (
-    "(?P<rpe>(?:[1-9](?:,|\.)[5])|(?:[1-9]|10)|(?:9\.\(3\)|9\.3|9\.\(6\)|9\.6))"
+    "(?P<rpe>(?:[1-9](?:,|\.)[5])|(?:[1-9]|10)|(?:9\.3|9\.6))"
 )
 RPE_MULTISET_SCHEME = f"(?P<multi_rpe>(?:@{RPE_SCHEME}){{2,}})"
 WEIGHT_SCHEME = (
