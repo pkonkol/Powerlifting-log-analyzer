@@ -103,9 +103,7 @@ class Exercise:
             if self._next_parallel_exercise == None:
                 logger.debug(f"No _next_parallel_exercise for {exercise_strs}"
                              f";; {planned_strs};; {second_col_strs}")
-                name, modifiers = self._exercise_from_string(exercise_strs[0])
-                self.name = name
-                self.modifiers = modifiers
+                self.name, self.modifiers = self._exercise_from_string(exercise_strs[0])
                 self.sets_planned = self._sets_planned_from_string(planned_strs[0])
                 self.sets_done = self._sets_done_from_string(second_col_strs[0])
 
@@ -133,6 +131,7 @@ class Exercise:
         name = exercise_str
         modifiers = [pattern.findall(name) for pattern in modifier_schemes]
         logging.debug(f"Modifiers: {modifiers}")
+        # TODO normal data structure for modifier, eg dict
         for m in modifiers:
             for k in m: # Remove modifiers from name
                 name = re.sub(f" \w+/{k}(?: |$)", " ", name)
@@ -215,15 +214,18 @@ class Exercise:
         return sets_planned
 
     def _parse_matched_set(self, match):
+        # This whole shit needs refactoring
+        # Hard to get what is going on here
+        # Maybe legit parser, like parser instead of regexes would really make sense
         groupdict = match[0].groupdict()
         if "undone" in groupdict:
             return (0,)
         if "done" in groupdict:
             return (1,)
 
-        logger.debug(f"groupdict: {groupdict}")  # wtf is this even,dont remember
+        logger.debug(f"groupdict for :{match}: {groupdict}")  # wtf is this even,dont remember
         sets = []
-
+        # So we generate a dict based on matched groups by regexps
         getdict = {
             "set_type": match[2],
             "reps": int(match[0].group("reps").replace(",", "."))
@@ -260,8 +262,8 @@ class Exercise:
             if "multi_reps" in groupdict
             else None,
         }
-        logger.debug(getdict)
-
+        logger.debug(f'getdict is {getdict}')
+        # Then based on these groups we set values that 
         if getdict["weight"]:
             matched_unit = match[0].group("unit")
             if matched_unit == "kg":
@@ -276,7 +278,7 @@ class Exercise:
             if getdict["set_type"] == SetType.PERCENT_1RM:
                 getdict["unit"] = WeightUnit.PERCENT_1RM
             elif getdict["set_type"] == SetType.LOAD_DROP:
-                getdict["unit"] = -1
+                getdict["unit"] = WeightUnit.PERCENT_TOPSET
             elif getdict["set_type"] == SetType.FATIGUE_PERCENT:
                 getdict["unit"] = None
             else:
@@ -293,28 +295,30 @@ class Exercise:
                     getdict.update(
                         {
                             "percentage": 1.0,
-                            "unit": -1,
+                            "unit": WeightUnit.PERCENT_TOPSET,
                             "rpe": None,
                             "set_type": SetType.LOAD_DROP,
                         }
                     )
                     continue
-
                 if getdict["set_type"] == SetType.LOAD_DROP:
-                    getdict["unit"] -= 1
+                    getdict["unit"] = WeightUnit.PERCENT_TOPSET
         elif "multi_rpe" in groupdict:
             for rpe in getdict["multi_rpe"]:
                 getdict["rpe"] = float(
                     rpe.replace(",", ".").replace("(", "").replace(")", "")
                 )
+                # are passed to sets
                 _set = self.create_set_object(**getdict)
                 sets.append(_set)
         elif "multi_reps" in groupdict:
             for reps in getdict["multi_reps"]:
                 getdict["reps"] = int(reps)
+                # are passed to sets
                 _set = self.create_set_object(**getdict)
                 sets.append(_set)
         else:
+            # are passed to sets
             _set = self.create_set_object(**getdict)
             sets.append(_set)
 
@@ -487,6 +491,6 @@ if __name__ == "__main__":
         last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
         break
-    # breakpoint()
+    breakpoint()
     print(mesocycles[0])
     logger.info(f"Parsed mesocycle[0]: {mesocycles[0]}")

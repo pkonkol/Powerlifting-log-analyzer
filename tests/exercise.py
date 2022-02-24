@@ -34,7 +34,6 @@ class SetsDoneParsing(unittest.TestCase):
                        Set(ST.WEIGHT, 12, Weight(15, WU.KG), None)]),
         ('2x8x30kg', [Set(ST.WEIGHT, 8, Weight(30, WU.KG), None),
                       Set(ST.WEIGHT, 8, Weight(30, WU.KG), None)]),
-        ('10x100kg', [Set(ST.WEIGHT, 10, Weight(100, WU.KG), None)]),
         ('X',   []),
         ('V',   []),
         #TODO
@@ -50,35 +49,32 @@ class SetsDoneParsing(unittest.TestCase):
     )
 
     def test_sets_done_from_string(self):
-        def f(self):
-            pass
-
         logger.info("Starting tests_sets_done_from_string" + "-"*30)
         e = Exercise
-        e.__init__ = f
+        e.__init__ = lambda x: None
         e = e()
         for sets_str, output_dict in self.correct_results:
             with self.subTest(msg=f'sets_done for {sets_str}'):
                 result = e._sets_done_from_string(sets_str)
                 logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
                 self.assertEqual(result, output_dict,
-                    msg=f'Failed done for {sets_str} with {result}; correct: {output_dict}')
+                    msg=f'Failed done for {sets_str} with---------\n{result}\n CORRECT---------\n{output_dict}')
 
 class SetsPlannedParsing(unittest.TestCase):
     #Set =  self.Set #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
     correct_results = (
         ('x8@9.3', [Set(ST.RPE, 8, Weight(None, None), 9.3)]),
-        ('2x5V80%', [Set(ST.LOAD_DROP, 5, Weight(0.8, -1), None),
-                     Set(ST.LOAD_DROP, 5, Weight(0.8, -2), None),
+        ('2x5V80%', [Set(ST.LOAD_DROP, 5, Weight(0.8, WU.PERCENT_TOPSET), None),
+                     Set(ST.LOAD_DROP, 5, Weight(0.8, WU.PERCENT_TOPSET), None),
                     ]), # deprecated i think
         
-        ('2x3@80%', [Set(ST.LOAD_DROP, 3, Weight(0.8, WU.PERCENT_1RM), None),
-                     Set(ST.LOAD_DROP, 3, Weight(0.8, WU.PERCENT_1RM), None)]),
+        ('2x3@80%', [Set(ST.LOAD_DROP, 3, Weight(0.8, WU.PERCENT_TOPSET), None),
+                     Set(ST.LOAD_DROP, 3, Weight(0.8, WU.PERCENT_TOPSET), None)]),
                      # this shoud represent load drop from last set now
                      # so 1rm% sets need new scheme
-        ('3x1@100%', [Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_1RM), None),
-                      Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_1RM), None),
-                      Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_1RM), None)]),
+        ('3x1@100%', [Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_TOPSET), None),
+                      Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_TOPSET), None),
+                      Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_TOPSET), None)]),
                       # Maybe refactor LOAD_DROP to DROP later as rep drop also counts
         ('2x3@80%RM', [Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None),
                        Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None)]),
@@ -88,7 +84,7 @@ class SetsPlannedParsing(unittest.TestCase):
         ('x5@7.5@9', [Set(ST.RPE, 5, Weight(None,None), 7.5),
                       Set(ST.RPE, 5, Weight(None,None), 9.0)]),
         ('2x5^@7', [Set(ST.RPE, 5, Weight(None,None), 7.0),
-                    Set(ST.LOAD_DROP, 5, Weight(1.0, -1), None)]),
+                    Set(ST.LOAD_DROP, 5, Weight(1.0, WU.PERCENT_TOPSET), None)]),
         ('x6$@9', [Set(ST.RPE_RAMP, 6, Weight(None, None), 9.0)]),
         ('x4@9-7%', [Set(ST.FATIGUE_PERCENT, 4, Weight(0.07, None), 9.0)]),
         ('160lbs@9', [Set(ST.RPE, None, Weight(160.0, WU.LBS), 9.0)]),
@@ -101,20 +97,33 @@ class SetsPlannedParsing(unittest.TestCase):
     )
 
     def test_sets_planned_from_string(self):
-        def f(self):
-            pass
-
         logger.info("Starting tests_sets_planned_from_string" + "-"*30)
         e = Exercise
-        e.__init__ = f
+        e.__init__ = lambda x: None
         e = e()
         for sets_str, output_dict in self.correct_results:
             with self.subTest(msg=f'sets_planned for {sets_str}'):
                 result = e._sets_planned_from_string(sets_str)
                 logger.info(f'test_sets_planned_from_string: {sets_str} -> {result}')
                 self.assertEqual(result, output_dict, 
-                    msg=f'Failed planned for {sets_str} with {result}, correct {output_dict}')
+                    msg=f'Failed planned for {sets_str} with--------\n {result},\n CORRECT--------\n {output_dict}')
 
+class ExerciseNameParsing(unittest.TestCase):
+    correct_results = (
+        ('SQ w/wraps', ('SQ', [['wraps'],[],[],[]])),
+    )
+
+    def test_exercise_name_parsing(self):
+        logger.info("Starting tests_exercise_from_string" + "-"*30)
+        e = Exercise
+        e.__init__ = lambda x: None
+        e = e()
+        for exercise_str, output in self.correct_results:
+            with self.subTest(msg=f'exercise for {exercise_str}'):
+                result = e._exercise_from_string(exercise_str)
+                logger.info(f'test_exercise_from_string: {exercise_str} -> {result}')
+                self.assertEqual(result, output, 
+                    msg=f'Failed exercise for {exercise_str} with--------\n {result},\n CORRECT--------\n {output}')
 
 class ExerciseInit(unittest.TestCase):
     # TODO check if complete class instance initializes correctly
@@ -124,7 +133,7 @@ class ExerciseInit(unittest.TestCase):
             {'planned': 'SQ: x5@9', 'done': '220x5@8.5 '}, 
             {'name': 'SQ', 'start': None, 'end': None,
              'sets_planned': [Set(ST.RPE, 5, Weight(None, None), 9)] , 
-             'sets_done': [Set(ST.RPE, 5, Weight(220.0, WU.KG), 8.5)],
+             'sets_done': [Set(ST.WEIGHT, 5, Weight(220.0, WU.KG), 8.5)],
             },
             # TODO: case for the error from B1M1S1 Comp BP, 
             # case with matching planned to done
