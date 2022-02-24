@@ -1,4 +1,5 @@
 import os,sys,inspect
+from tkinter.messagebox import NO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
@@ -38,6 +39,7 @@ class SetsDoneParsing(unittest.TestCase):
         ('V',   []),
         #TODO
         # 'vvvv vvvv'
+        #('vvvv vvvv', [Set(ST.DONE, None, None, None) for i in range(8)])
         # 'vvv'
         # 'vv vv vv vv vv'
         # '40kgXvvvv' maybe change the X to eg. 40kg=vvvv
@@ -56,11 +58,11 @@ class SetsDoneParsing(unittest.TestCase):
         e.__init__ = f
         e = e()
         for sets_str, output_dict in self.correct_results:
-            # breakpoint()
-            result = e._sets_done_from_string(sets_str)
-            logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
-            self.assertEqual(result, output_dict,
-                 msg=f'Failed done for {sets_str} with {result}; correct: {output_dict}')
+            with self.subTest(msg=f'sets_done for {sets_str}'):
+                result = e._sets_done_from_string(sets_str)
+                logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
+                self.assertEqual(result, output_dict,
+                    msg=f'Failed done for {sets_str} with {result}; correct: {output_dict}')
 
 class SetsPlannedParsing(unittest.TestCase):
     #Set =  self.Set #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
@@ -70,12 +72,18 @@ class SetsPlannedParsing(unittest.TestCase):
                      Set(ST.LOAD_DROP, 5, Weight(0.8, -2), None),
                     ]), # deprecated i think
         
-        ('2x3@80%', [Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None),
-                     Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None)]),
+        ('2x3@80%', [Set(ST.LOAD_DROP, 3, Weight(0.8, WU.PERCENT_1RM), None),
+                     Set(ST.LOAD_DROP, 3, Weight(0.8, WU.PERCENT_1RM), None)]),
                      # this shoud represent load drop from last set now
                      # so 1rm% sets need new scheme
-        ('2x8', [Set(ST.NONE, 8, Weight(None, None), None),
-                 Set(ST.NONE, 8, Weight(None, None), None)]),
+        ('3x1@100%', [Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_1RM), None),
+                      Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_1RM), None),
+                      Set(ST.LOAD_DROP, 1, Weight(1.0, WU.PERCENT_1RM), None)]),
+                      # Maybe refactor LOAD_DROP to DROP later as rep drop also counts
+        ('2x3@80%RM', [Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None),
+                       Set(ST.PERCENT_1RM, 3, Weight(0.8, WU.PERCENT_1RM), None)]),
+        ('2x8', [Set(ST.DONE, 8, Weight(None, None), None),
+                 Set(ST.DONE, 8, Weight(None, None), None)]),
         ('80%x5', [Set(ST.PERCENT_1RM, 5, Weight(0.8, WU.PERCENT_1RM), None) ]),
         ('x5@7.5@9', [Set(ST.RPE, 5, Weight(None,None), 7.5),
                       Set(ST.RPE, 5, Weight(None,None), 9.0)]),
@@ -85,10 +93,11 @@ class SetsPlannedParsing(unittest.TestCase):
         ('x4@9-7%', [Set(ST.FATIGUE_PERCENT, 4, Weight(0.07, None), 9.0)]),
         ('160lbs@9', [Set(ST.RPE, None, Weight(160.0, WU.LBS), 9.0)]),
         ('160kg@9.6', [Set(ST.RPE, None , Weight(160.0, WU.KG), 9.6)]),
-        # 160@9
+        ('160@7', [Set(ST.RPE, None , Weight(160.0, WU.KG), 7)]),
         ('150/5', [Set(ST.WEIGHT, 5, Weight(150.0, DU), None)]),
-        # '5x'
-        # '150kgx5'
+        ('150lbs/5', [Set(ST.WEIGHT, 5, Weight(150.0, WU.LBS), None)]),
+        ('5x', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(5)]),  # '5x'
+        # '150kgx5' Is this even going to be implemented?
     )
 
     def test_sets_planned_from_string(self):
@@ -100,10 +109,11 @@ class SetsPlannedParsing(unittest.TestCase):
         e.__init__ = f
         e = e()
         for sets_str, output_dict in self.correct_results:
-            result = e._sets_planned_from_string(sets_str)
-            logger.info(f'test_sets_planned_from_string: {sets_str} -> {result}')
-            self.assertEqual(result, output_dict, 
-                msg=f'Failed planned for {sets_str} with {result}, correct {output_dict}')
+            with self.subTest(msg=f'sets_planned for {sets_str}'):
+                result = e._sets_planned_from_string(sets_str)
+                logger.info(f'test_sets_planned_from_string: {sets_str} -> {result}')
+                self.assertEqual(result, output_dict, 
+                    msg=f'Failed planned for {sets_str} with {result}, correct {output_dict}')
 
 
 class ExerciseInit(unittest.TestCase):
@@ -111,16 +121,31 @@ class ExerciseInit(unittest.TestCase):
     # Also may split it in tests for specific class init elements
     cases = (
         (
-            ("SQ: x5@9", "1920) 220@8.5 (1955"), 
-            {'name': 0, 'planned': 0, 'start': 0, 'end': 0},
+            {'planned': 'SQ: x5@9', 'done': '220x5@8.5 '}, 
+            {'name': 'SQ', 'start': None, 'end': None,
+             'sets_planned': [Set(ST.RPE, 5, Weight(None, None), 9)] , 
+             'sets_done': [Set(ST.RPE, 5, Weight(220.0, WU.KG), 8.5)],
+            },
+            # TODO: case for the error from B1M1S1 Comp BP, 
+            # case with matching planned to done
+            # case with start & end time
         ),
     )
 
-    for strs, correct_dict in cases:
+    def test_match_sets_planned_with_done(self):
         pass
 
+    def test_exercise_init_with_correct_values(self):
+        logger.info("Starting exercise_init_with_correct_values" + "-"*30)
+        for strs, correct_dict in self.cases:
+            with self.subTest(msg=f'exercise_init for {strs["planned"]}:{strs["done"]}'):
+                e = Exercise(strs['planned'], strs['done'], "")
+                self.assertEqual(e.name, correct_dict['name'])
+                self.assertEqual(e.sets_planned, correct_dict['sets_planned'])
+                self.assertEqual(e.sets_done, correct_dict['sets_done'])
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
 
 #set struct
 # ({'reps': <int> , 'type': <str>, 'weight': <float>, 'RPE': <float>}, ...)
