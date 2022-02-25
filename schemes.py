@@ -24,7 +24,8 @@ class SetType(Enum): # Likely TODO split this into planned and done
     LOAD_DROP = 3 # repeats at given percentage of previous set
     FATIGUE_PERCENT = 4 # repeats until reaching RPE of the top set (previous set)
     RPE_RAMP = 5 # to remove?
-    DONE = 6 # Boolean - just done with no additional info
+    DONE = 6 # Boolean - just done one set with no additional info
+    DONE_ALL = 7 # Done all sets as planned
 
 
 SCHEMES_PLANNED = (

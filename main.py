@@ -10,7 +10,7 @@ import logging
 
 logging.basicConfig(
     filename="pla.log",
-    format="%(levelname)s:%(name)s:%(lineno)s  %(message)s",
+    format="%(levelname)s:%(name)s:%(lineno)s - %(funcName)20s()  %(message)s",
     level=logging.DEBUG,
     filemode="w",
 )
@@ -150,7 +150,8 @@ class Exercise:
         logger.debug(
             f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}"
         )
-        sets_str = re.split(" |;", sets_str.strip())
+        sets_str = filter(lambda x: x != '', re.split(" |;", sets_str.strip()))
+        sets_done = []
         for set_str in sets_str:
             while True:
                 logger.debug(f'Parsing while round for "{set_str}"')
@@ -160,23 +161,26 @@ class Exercise:
                         for index, pattern in enumerate(SCHEMES_DONE)
                         if pattern[0].match(set_str)
                     ][0]
+                    logging.debug(
+                        f"Done: {sets_str}, {set_str}, "
+                        f"match={match}, groups={match[0].groups()}"
+                    )
                 except IndexError as e:
                     logger.exception(e)
                     logger.info(f"Failed to match set {set_str} with any of schemes")
                     break
                 break
-            logging.debug(
-                f"Done: {sets_str}, {set_str}, "
-                f"match={match}, groups={match[0].groups()}"
-            )
+            sets_done.extend(self._parse_matched_set(match))
+            # these are TMP and suck
+            if sets_done == [0,]:
+                self.done = False
+                sets_done = []
+                break
+            elif sets_done == [1,]:
+                self.done = True
+                sets_done = []
+                break
 
-        sets_done = self._parse_matched_set(match)
-        if sets_done == (0,):
-            self.done = False
-            sets_done = []
-        elif sets_done == (1,):
-            self.done = True
-            sets_done = []
 
         logger.debug("Finish sets_done_from_string-----------")
         return sets_done
@@ -184,6 +188,7 @@ class Exercise:
     def _sets_planned_from_string(self, sets_planned_str):
         logger.debug(f"----------- Parsing sets planned from {sets_planned_str}")
 
+        sets_planned = []
         sets_planned_str = sets_planned_str.strip()
         if sets_planned_str == "":
             return []
@@ -199,17 +204,17 @@ class Exercise:
                         for index, pattern in enumerate(SCHEMES_PLANNED)
                         if pattern[0].match(set_str)
                     ][0]
+                    logger.info(
+                        f"Planned: {sets_str}, {set_str}, "
+                        f"match={match}, groups={match[0].groups()}"
+                    )
                 except IndexError as e:
                     logger.exception(e)
                     logger.debug(f"Failed to match set {set_str} with any of schemes")
                     break
                 break
-            logger.info(
-                f"Planned: {sets_str}, {set_str}, "
-                f"match={match}, groups={match[0].groups()}"
-            )
 
-        sets_planned = self._parse_matched_set(match)
+            sets_planned.extend(self._parse_matched_set(match))
         logger.debug("Finish sets_planned_from_string-----------")
         return sets_planned
 
@@ -218,6 +223,7 @@ class Exercise:
         # Hard to get what is going on here
         # Maybe legit parser, like parser instead of regexes would really make sense
         groupdict = match[0].groupdict()
+        # TODO rewrite these exceptions into normal Set() object
         if "undone" in groupdict:
             return (0,)
         if "done" in groupdict:
@@ -358,6 +364,7 @@ class Exercise:
 
     def __str__(self):
         if self.done:
+            logger.debug(f"{self.name}: {self.sets_done}")
             sets_done = [
                 f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
                 for s in self.sets_done

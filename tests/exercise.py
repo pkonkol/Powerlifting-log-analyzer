@@ -47,13 +47,29 @@ class SetsDoneParsing(unittest.TestCase):
         ('5,4@150kg', [Set(ST.WEIGHT, 5, Weight(150, WU.KG), None),
                        Set(ST.WEIGHT, 4, Weight(150, WU.KG), None)]),
     )
+    correct_complex_results = (
+        ('170@7 180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
+        ('170@7      180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
+    )
 
-    def test_sets_done_from_string(self):
+    def test_simple_sets_done_from_string(self):
         logger.info("Starting tests_sets_done_from_string" + "-"*30)
         e = Exercise
         e.__init__ = lambda x: None
         e = e()
         for sets_str, output_dict in self.correct_results:
+            with self.subTest(msg=f'sets_done for {sets_str}'):
+                result = e._sets_done_from_string(sets_str)
+                logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
+                self.assertEqual(result, output_dict,
+                    msg=f'Failed done for {sets_str} with---------\n{result}\n CORRECT---------\n{output_dict}')
+
+    def test_complex_sets_done_from_string(self):
+        logger.info("Starting tests_sets_done_from_string" + "-"*30)
+        e = Exercise
+        e.__init__ = lambda x: None
+        e = e()
+        for sets_str, output_dict in self.correct_complex_results:
             with self.subTest(msg=f'sets_done for {sets_str}'):
                 result = e._sets_done_from_string(sets_str)
                 logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
