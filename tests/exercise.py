@@ -6,6 +6,7 @@ sys.path.insert(0,parentdir)
 
 import unittest
 import logging
+import pprint
 from main import Exercise, WeightUnit
 from schemes import SetType
 
@@ -26,6 +27,9 @@ class SetsDoneParsing(unittest.TestCase):
         ('200x5@9', [Set(ST.WEIGHT, 5, Weight(200, DU), 9)]),
         ('160x5@7@8.5', [Set(ST.WEIGHT, 5, Weight(160, DU), 7),
                         Set(ST.WEIGHT, 5, Weight(160, DU), 8.5)]),
+        ('160@7@8.5@10', [Set(ST.WEIGHT, None, Weight(160, DU), 7),
+                        Set(ST.WEIGHT, None, Weight(160, DU), 8.5),
+                        Set(ST.WEIGHT, None, Weight(160, DU), 10)]),
         ('180@7@9', [Set(ST.WEIGHT, None, Weight(180, DU), 7),
                      Set(ST.WEIGHT, None, Weight(180, DU), 9)]),
         ('2x10/20kg', [Set(ST.WEIGHT, 10, Weight(20, WU.KG), None),
@@ -38,8 +42,9 @@ class SetsDoneParsing(unittest.TestCase):
         ('V',   []),
         #TODO
         # 'vvvv vvvv'
-        #('vvvv vvvv', [Set(ST.DONE, None, None, None) for i in range(8)])
-        # 'vvv'
+        ('vvvv vvvv', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(8)]), 
+        ('vv', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(2)]), 
+        # 'vv'
         # 'vv vv vv vv vv'
         # '40kgXvvvv' maybe change the X to eg. 40kg=vvvv
         ('5,3@BW', [Set(ST.WEIGHT, 5, Weight(None, WU.BW), None),
@@ -50,6 +55,9 @@ class SetsDoneParsing(unittest.TestCase):
     correct_complex_results = (
         ('170@7 180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
         ('170@7      180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
+        ('290@8 290x8@9.5@10', [Set(ST.WEIGHT, None, Weight(290, DU), 8), Set(ST.WEIGHT, 8, Weight(290, DU), 9.5), Set(ST.WEIGHT, 8, Weight(290, DU), 10)]),
+        ('290x8@9.5@10 x6@9', [Set(ST.WEIGHT, 8, Weight(290, DU), 9.5), Set(ST.WEIGHT, 8, Weight(290, DU), 10 ), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 9)]),
+        ('290x12@6 x6@5@5.5', [Set(ST.WEIGHT, 12, Weight(290, DU), 6), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 5), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 5.5)]),
     )
 
     def test_simple_sets_done_from_string(self):
@@ -62,7 +70,7 @@ class SetsDoneParsing(unittest.TestCase):
                 result = e._sets_done_from_string(sets_str)
                 logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
                 self.assertEqual(result, output_dict,
-                    msg=f'Failed done for {sets_str} with---------\n{result}\n CORRECT---------\n{output_dict}')
+                    msg=f'Failed done for {sets_str} with---------\n{pprint.pformat(result)}\n CORRECT---------\n{pprint.pformat(output_dict)}')
 
     def test_complex_sets_done_from_string(self):
         logger.info("Starting tests_sets_done_from_string" + "-"*30)
@@ -74,7 +82,7 @@ class SetsDoneParsing(unittest.TestCase):
                 result = e._sets_done_from_string(sets_str)
                 logger.info(f'test_sets_done_from_string:{sets_str} -> {result}')
                 self.assertEqual(result, output_dict,
-                    msg=f'Failed done for {sets_str} with---------\n{result}\n CORRECT---------\n{output_dict}')
+                    msg=f'Failed done for {sets_str} with---------\n{pprint.pformat(result)}\n CORRECT---------\n{pprint.pformat(output_dict)}')
 
 class SetsPlannedParsing(unittest.TestCase):
     #Set =  self.Set #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))

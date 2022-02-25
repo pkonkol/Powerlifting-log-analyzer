@@ -1,8 +1,9 @@
+from tkinter.messagebox import NO
 import gspread
 import re
+import pprint
 from collections import namedtuple
 from enum import Enum
-from pprint import pprint
 from typing import List
 from utils import calculate_e1RM
 from schemes import *
@@ -176,10 +177,9 @@ class Exercise:
                 self.done = False
                 sets_done = []
                 break
-            elif sets_done == [1,]:
-                self.done = True
-                sets_done = []
-                break
+            # elif sets_done == [self.Set(SetType.DONE_ALL, None, Weight(None, None), None),]:
+            #     self.done = True
+            #     break
 
 
         logger.debug("Finish sets_done_from_string-----------")
@@ -227,6 +227,10 @@ class Exercise:
         if "undone" in groupdict:
             return (0,)
         if "done" in groupdict:
+            x = match[0].groups['done'].replace(" ", "")
+            if len(x) > 1:
+                logger.debug(f"Found set of type done multiset: {x}")
+                return [self.create_set_object(set_type=SetType.DONE) for _ in range(len(x))]
             return (1,)
 
         logger.debug(f"groupdict for :{match}: {groupdict}")  # wtf is this even,dont remember

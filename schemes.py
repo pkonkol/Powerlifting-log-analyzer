@@ -21,7 +21,7 @@ class SetType(Enum): # Likely TODO split this into planned and done
     RPE = 0
     WEIGHT = 1 # KGs 
     PERCENT_1RM = 2 # self explanatory
-    LOAD_DROP = 3 # repeats at given percentage of previous set
+    LOAD_DROP = 3 # repeats at given percentage of previous set, better named RELATIVE_WEIGHT or smth
     FATIGUE_PERCENT = 4 # repeats until reaching RPE of the top set (previous set)
     RPE_RAMP = 5 # to remove?
     DONE = 6 # Boolean - just done one set with no additional info
@@ -91,8 +91,8 @@ SCHEMES_DONE = (
     ),
     (re.compile("^ *(?P<undone>[Xx]?) *$"), SetType.DONE),  # exercise not done
     # (re.compile("^(?P<undone> ?)$"), SetType.NONE),  # exercise not done
-    (re.compile("^ *(?P<done>[V]) *$"), SetType.DONE),  # Done, V for each set
-    (re.compile("^ *(?P<done>[v]+|[V]{2,}) *$"), SetType.DONE),  # Done, V for each set, parse by len(?)
+    (re.compile("^\s*(?P<done>[V])\s*$"), SetType.DONE),  # Done, V for each set
+    (re.compile("^\s*(?P<done>[v]+|[V]{2,})\s*$"), SetType.DONE),  # Done, V for each set, parse by len(?)
     (re.compile(f"^{WEIGHT_SCHEME}[Xx][Vv]+$"),
      SetType.WEIGHT,
     ),  # Kilograms done for as many sets as "v's" after weight
@@ -101,6 +101,10 @@ SCHEMES_DONE = (
     (re.compile( f"^(?P<multi_reps>(?:{REPS_SCHEME}(?:,|@))+){WEIGHT_SCHEME}$"),  # Multiple sets at given weight
      SetType.WEIGHT,
     ),
-    (re.compile(f"^{REPS_SCHEME}x{WEIGHT_SCHEME}$"),  # Reps at weight SetType.WEIGHT,
+    (re.compile(f"^{REPS_SCHEME}x{WEIGHT_SCHEME}$"),  # Reps at weight
+     SetType.WEIGHT,
+    ),
+    (re.compile(f"^x{REPS_SCHEME}@{RPE_SCHEME}$"),  # Reps at weight
+     SetType.LOAD_DROP,
     ),
 )
