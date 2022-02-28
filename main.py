@@ -123,10 +123,10 @@ class Exercise:
     def _exercise_from_string(self, exercise_str):
         logger.debug(f"Parsing exercise from {exercise_str}")
         modifier_schemes = (
-            re.compile(" w/(?P<with>[a-zA-Z0-9]+)"),  #'with x',
+            re.compile(" w/(?P<with>[a-zA-Z0-9_']+)"),  #'with x',
             re.compile(" t/(?P<tempo>\d{4})"),  #'tempo XXXX',
-            re.compile(" wo/(?P<without>[a-zA-Z0-9]+)"),  #'without x',
-            re.compile(" p/(?P<pattern>[a-zA-z0-9]+)"),
+            re.compile(" wo/(?P<without>[a-zA-Z0-9_']+)"),  #'without x',
+            re.compile(" p/(?P<pattern>[a-zA-z0-9_']+)"),
         )  #'movement patter mod'
 
         name = exercise_str
@@ -151,8 +151,11 @@ class Exercise:
         logger.debug(
             f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}"
         )
-        sets_str = filter(lambda x: x != '', re.split(" |;", sets_str.strip()))
+        sets_str = list(filter(lambda x: x != '', re.split(" |;", sets_str.strip())))
         sets_done = []
+        if sets_str == []:
+            self.done = False
+            return [] # return sets_done := []
         for set_str in sets_str:
             while True:
                 logger.debug(f'Parsing while round for "{set_str}"')
@@ -227,11 +230,11 @@ class Exercise:
         if "undone" in groupdict:
             return (0,)
         if "done" in groupdict:
-            x = match[0].groups['done'].replace(" ", "")
+            x = match[0].group('done').replace(" ", "")
             if len(x) > 1:
                 logger.debug(f"Found set of type done multiset: {x}")
-                return [self.create_set_object(set_type=SetType.DONE) for _ in range(len(x))]
-            return (1,)
+                return (self.create_set_object(set_type=SetType.DONE) for _ in range(len(x), ))
+            return (self.create_set_object(set_type=SetType.DONE_ALL),)
 
         logger.debug(f"groupdict for :{match}: {groupdict}")  # wtf is this even,dont remember
         sets = []
@@ -369,20 +372,23 @@ class Exercise:
     def __str__(self):
         if self.done:
             logger.debug(f"{self.name}: {self.sets_done}")
-            sets_done = [
-                f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
-                for s in self.sets_done
-            ]
+            if len(self.sets_done) == 1 and self.sets_done[0].type == SetType.DONE_ALL:
+                sets_done = ("V(all)", )
+            else:
+                sets_done = [
+                    f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+                    for s in self.sets_done
+                ]
         else:
             sets_done = "X"
         sets_planned = [
             f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
             for s in self.sets_planned
         ]
-        e1RM = self.e1RM if self.e1RM else 0.0
+        e1RM = f'| e1RM: {self.e1RM}' if self.e1RM else ''
         if self._next_parallel_exercise:
             return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} & ' + str(self._next_parallel_exercise)
-        return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} | e1RM: {e1RM} \n'
+        return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} {e1RM} \n'
 
 
 class Session:
