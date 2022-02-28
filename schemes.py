@@ -99,12 +99,15 @@ SCHEMES_DONE = (
     # eg. 40kgxVVVVV, reps presumed as planned
     # TODO legit support for this and related in matched set parser
     (re.compile( f"^(?P<multi_reps>(?:{REPS_SCHEME}(?:,|@))+){WEIGHT_SCHEME}$"),  # Multiple sets at given weight
-     SetType.WEIGHT,
+     SetType.WEIGHT, # 10,10,10,8,6@100kg
     ),
     (re.compile(f"^{REPS_SCHEME}x{WEIGHT_SCHEME}$"),  # Reps at weight
      SetType.WEIGHT,
     ),
-    (re.compile(f"^x{REPS_SCHEME}@{RPE_SCHEME}$"),  # Reps at weight
+    (re.compile(f"^x{REPS_SCHEME}@{RPE_SCHEME}$"),  # Reps at rpe, relative wegiht
      SetType.LOAD_DROP,
+    ),
+    (re.compile(f"^x{REPS_SCHEME}{RPE_MULTISET_SCHEME}$"),
+     SetType.LOAD_DROP,  # Reps at rpe, relative wegiht, many sets
     ),
 )

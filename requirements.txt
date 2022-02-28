@@ -1,2 +1,3 @@
 gspread==5.1.1
 yapf
+colorama

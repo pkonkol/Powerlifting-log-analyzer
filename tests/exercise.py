@@ -39,7 +39,7 @@ class SetsDoneParsing(unittest.TestCase):
         ('2x8x30kg', [Set(ST.WEIGHT, 8, Weight(30, WU.KG), None),
                       Set(ST.WEIGHT, 8, Weight(30, WU.KG), None)]),
         ('X',   []),
-        ('V',   []),
+        ('V',   [Set(ST.DONE_ALL, None, Weight(None, None), None)]),
         #TODO
         # 'vvvv vvvv'
         ('vvvv vvvv', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(8)]), 

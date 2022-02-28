@@ -1,8 +1,10 @@
-from tkinter.messagebox import NO
+import colorama
+colorama.init()
 import gspread
 import re
 import pprint
 from collections import namedtuple
+from colorama import Fore, Back, Style
 from enum import Enum
 from typing import List
 from utils import calculate_e1RM
@@ -373,22 +375,32 @@ class Exercise:
         if self.done:
             logger.debug(f"{self.name}: {self.sets_done}")
             if len(self.sets_done) == 1 and self.sets_done[0].type == SetType.DONE_ALL:
-                sets_done = ("V(all)", )
+                sets_done = (f"{Fore.GREEN}V(all){Fore.RESET}", )
             else:
                 sets_done = [
-                    f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+                    (f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
+                     f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
+                     f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
+                    )
                     for s in self.sets_done
                 ]
         else:
-            sets_done = "X"
+            sets_done = [f"{Fore.LIGHTRED_EX} X {Fore.RESET}",]
         sets_planned = [
-            f"{s.weight.value or ''}x{s.reps or ''}" f"@{s.rpe or ''}"
+            (f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
+             f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
+             f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
+            )
             for s in self.sets_planned
         ]
-        e1RM = f'| e1RM: {self.e1RM}' if self.e1RM else ''
+        e1RM = f'|{Fore.MAGENTA} e1RM: {self.e1RM}{Fore.RESET}' if self.e1RM else ''
+        ret =(f'{Fore.RED}{self.name}{Fore.RESET}: '
+              f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
+              f'{" ".join(sets_done)} {e1RM} '
+        )
         if self._next_parallel_exercise:
-            return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} & ' + str(self._next_parallel_exercise)
-        return f'\t\t\t{self.name}: {";".join(sets_planned)} | {";".join(sets_done)} {e1RM} \n'
+            return ret + str(self._next_parallel_exercise)
+        return ret + '\n'
 
 
 class Session:
@@ -397,7 +409,7 @@ class Session:
         self.date = date
 
     def __str__(self):
-        ret = f"\t\tSession from {self.date}\n"
+        ret = f"{Back.BLUE}Session from {self.date}{Back.RESET}\n"
         for e in self.exercises:
             ret += str(e)
         return ret + "\n"
@@ -408,7 +420,7 @@ class Microcycle:
         self.sessions = sessions
 
     def __str__(self):
-        ret = f"\tMicrocycle: \n"
+        ret = f"{Back.GREEN}Microcycle: {Back.RESET}\n"
         for s in self.sessions:
             ret += str(s)
         return ret + "\n"
@@ -419,7 +431,7 @@ class Mesocycle:
         self.microcycles = microcycles
 
     def __str__(self):
-        ret = f"Mesocycle: \n"
+        ret = f"{Fore.BLACK}{Back.YELLOW}Mesocycle: {Back.RESET}{Fore.RESET}\n"
         for m in self.microcycles:
             ret += str(m)
         return ret + "\n"
