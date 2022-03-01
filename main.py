@@ -108,7 +108,9 @@ class Exercise:
                              f";; {planned_strs};; {second_col_strs}")
                 self.name, self.modifiers = self._exercise_from_string(exercise_strs[0])
                 self.sets_planned = self._sets_planned_from_string(planned_strs[0])
-                self.sets_done = self._sets_done_from_string(second_col_strs[0])
+                self.sets_done = self._match_sets_planned_done(
+                    self._sets_done_from_string(second_col_strs[0])
+                )
 
             # Create new Exercise object with strings stripped from data leftmost of &
             self._next_parallel_exercise = Exercise(
@@ -120,7 +122,9 @@ class Exercise:
 
         self.name, self.modifiers = self._exercise_from_string(exercise_str)
         self.sets_planned = self._sets_planned_from_string(planned_str)
-        self.sets_done = self._sets_done_from_string(second_col_str)
+        self.sets_done = self._match_sets_planned_done(
+            self._sets_done_from_string(second_col_str)
+        )
 
     def _exercise_from_string(self, exercise_str):
         logger.debug(f"Parsing exercise from {exercise_str}")
@@ -182,10 +186,6 @@ class Exercise:
                 self.done = False
                 sets_done = []
                 break
-            # elif sets_done == [self.Set(SetType.DONE_ALL, None, Weight(None, None), None),]:
-            #     self.done = True
-            #     break
-
 
         logger.debug("Finish sets_done_from_string-----------")
         return sets_done
@@ -353,13 +353,21 @@ class Exercise:
         w = self.Weight(weight if weight else percentage if percentage else None, unit)
         return self.Set(set_type, reps, w, rpe)
 
-    def match_sets_planned_done(self):
+    def _match_sets_planned_done(self, done):
         """
         If len() of done and planned sets is the same and there are no rep ranges on done
         sets then presume that done_set[i] corresponds to planned_set[i]
-        TODO soon
+        While this may not seem as the cleanest solution I use it in practice all the time
+        inside my spreadsheets.
         """
-        pass
+        if not len(done) == len(self.sets_planned):
+            return done
+        if not all([s.reps == None for s in done]):
+            return done
+        new_sets_done=[]
+        for p, d in zip(self.sets_planned, done):
+            new_sets_done.append(self.Set(d.type, p.reps, d.weight, d.rpe))
+        return new_sets_done
 
     def _sets_done_connect_relative_weight():
         pass
