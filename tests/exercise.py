@@ -44,9 +44,8 @@ class SetsDoneParsing(unittest.TestCase):
         # 'vvvv vvvv'
         ('vvvv vvvv', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(8)]), 
         ('vv', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(2)]), 
-        # 'vv'
-        # 'vv vv vv vv vv'
-        # '40kgXvvvv' maybe change the X to eg. 40kg=vvvv
+        ('vv vv vv vv vv', [Set(ST.DONE, None, Weight(None, None), None) for _ in range(10)]), 
+        ('40kgXvvvv',[Set(ST.WEIGHT, None, Weight(40, WU.KG), None) for _ in range(4)]), #maybe change the X to eg. 40kg=vvvv
         ('5,3@BW', [Set(ST.WEIGHT, 5, Weight(None, WU.BW), None),
                     Set(ST.WEIGHT, 3, Weight(None, WU.BW), None)]),
         ('5,4@150kg', [Set(ST.WEIGHT, 5, Weight(150, WU.KG), None),
@@ -54,9 +53,9 @@ class SetsDoneParsing(unittest.TestCase):
     )
     correct_complex_results = (
         ('170@7 180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
-        ('170@7      180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
+        ('  170@7      180@7.5', [Set(ST.WEIGHT, None, Weight(170, DU), 7), Set(ST.WEIGHT, None, Weight(180, DU), 7.5)]),
         ('290@8 290x8@9.5@10', [Set(ST.WEIGHT, None, Weight(290, DU), 8), Set(ST.WEIGHT, 8, Weight(290, DU), 9.5), Set(ST.WEIGHT, 8, Weight(290, DU), 10)]),
-        ('290x8@9.5@10 x6@9', [Set(ST.WEIGHT, 8, Weight(290, DU), 9.5), Set(ST.WEIGHT, 8, Weight(290, DU), 10 ), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 9)]),
+        ('290x8@9.5@10 x6@9  ', [Set(ST.WEIGHT, 8, Weight(290, DU), 9.5), Set(ST.WEIGHT, 8, Weight(290, DU), 10 ), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 9)]),
         ('290x12@6 x6@5@5.5', [Set(ST.WEIGHT, 12, Weight(290, DU), 6), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 5), Set(ST.LOAD_DROP, 6, Weight(1.0, WU.PERCENT_TOPSET), 5.5)]),
     )
 

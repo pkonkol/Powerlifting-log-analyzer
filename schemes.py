@@ -91,10 +91,9 @@ SCHEMES_DONE = (
     ),
     (re.compile("^ *(?P<undone>[Xx]?) *$"), SetType.DONE),  # exercise not done
     # (re.compile("^(?P<undone> ?)$"), SetType.NONE),  # exercise not done
-    (re.compile("^\s*(?P<done>[V])\s*$"), SetType.DONE),  # Done, V for each set
+    (re.compile("^\s*(?P<done>[V])\s*$"), SetType.DONE_ALL),  # Done, V for each set
     (re.compile("^\s*(?P<done>[v]+|[V]{2,})\s*$"), SetType.DONE),  # Done, V for each set, parse by len(?)
-    (re.compile(f"^{WEIGHT_SCHEME}[Xx][Vv]+$"),
-     SetType.WEIGHT,
+    (re.compile(f"^{WEIGHT_SCHEME}[Xx](?P<done>[Vv]+)$"), SetType.WEIGHT,
     ),  # Kilograms done for as many sets as "v's" after weight
     # eg. 40kgxVVVVV, reps presumed as planned
     # TODO legit support for this and related in matched set parser

@@ -229,14 +229,9 @@ class Exercise:
         # Maybe legit parser, like parser instead of regexes would really make sense
         groupdict = match[0].groupdict()
         # TODO rewrite these exceptions into normal Set() object
+        # This shit shouldn't even be here but with the rest of the groups
         if "undone" in groupdict:
             return (0,)
-        if "done" in groupdict:
-            x = match[0].group('done').replace(" ", "")
-            if len(x) > 1:
-                logger.debug(f"Found set of type done multiset: {x}")
-                return (self.create_set_object(set_type=SetType.DONE) for _ in range(len(x), ))
-            return (self.create_set_object(set_type=SetType.DONE_ALL),)
 
         logger.debug(f"groupdict for :{match}: {groupdict}")  # wtf is this even,dont remember
         sets = []
@@ -244,11 +239,9 @@ class Exercise:
         getdict = {
             "set_type": match[2],
             "reps": int(match[0].group("reps").replace(",", "."))
-            if "reps" in groupdict
-            else None,
+                if "reps" in groupdict else None,
             "sets": int(match[0].group("sets").replace(",", "."))
-            if "sets" in groupdict
-            else None,
+                if "sets" in groupdict else None,
             "rpe": (
                 float(
                     match[0]
@@ -257,8 +250,7 @@ class Exercise:
                     .replace("(", "")
                     .replace(")", "")
                 )
-                if "rpe" in groupdict
-                else None
+                if "rpe" in groupdict else None
             ),
             "weight": (
                 float(match[0].group("weight").replace(",", "."))
@@ -267,18 +259,19 @@ class Exercise:
             ),
             "percentage": (
                 float(match[0].group("percentage").replace(",", ".")) / 100.0
-                if "percentage" in groupdict
-                else None
+                if "percentage" in groupdict else None
             ),
             "multi_rpe": match[0].group("multi_rpe").split("@")[1:]
-            if "multi_rpe" in groupdict
-            else None,
+                if "multi_rpe" in groupdict else None,
             "multi_reps": match[0].group("multi_reps").strip("@").split(",")
-            if "multi_reps" in groupdict
-            else None,
+                if "multi_reps" in groupdict else None,
+            "done": match[0].group("done").replace(" ", "")
+                if "done" in groupdict else None,
         }
         logger.debug(f'getdict is {getdict}')
         # Then based on these groups we set values that 
+        # These are used for basic values that need no advanced parsing
+        # like multisets/multiRPEs etc
         if getdict["weight"]:
             matched_unit = match[0].group("unit")
             if matched_unit == "kg":
@@ -298,12 +291,17 @@ class Exercise:
                 getdict["unit"] = None
             else:
                 raise StandardError("Unsupported Set Type for percentage")
-
+        elif getdict["set_type"] == SetType.LOAD_DROP:
+            getdict["unit"] = WeightUnit.PERCENT_TOPSET
+            getdict["percentage"] = 1.0
+        elif getdict["done"] and len(getdict["done"]) == 1:
+            getdict["set_type"] == SetType.DONE_ALL
+        # So here we handle the cases of multisets if necessary and at
+        # the end we append that to return object
         if "sets" in groupdict:
             for i in range(0, getdict["sets"]):
                 _set = self.create_set_object(**getdict)
                 sets.append(_set)
-
                 if getdict["set_type"] == SetType.RPE:
                     if "unit" in getdict and getdict["unit"] == WeightUnit.BW:
                         continue
@@ -332,6 +330,9 @@ class Exercise:
                 # are passed to sets
                 _set = self.create_set_object(**getdict)
                 sets.append(_set)
+        elif getdict["done"] and len(getdict["done"]) > 1:
+            logger.debug(f'Found set of type done multiset: {getdict["done"]}')
+            sets.extend(self.create_set_object(**getdict) for _ in range(len(getdict["done"])))
         else:
             # are passed to sets
             _set = self.create_set_object(**getdict)
@@ -358,6 +359,9 @@ class Exercise:
         sets then presume that done_set[i] corresponds to planned_set[i]
         TODO soon
         """
+        pass
+
+    def _sets_done_connect_relative_weight():
         pass
 
     def volume(self):
