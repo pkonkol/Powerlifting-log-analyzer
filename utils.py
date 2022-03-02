@@ -52,6 +52,9 @@ def get_percentage(reps: float, rpe: str):
     else:
         return 0
 
+def calculate_inol(reps, intensity):
+    return reps/(100.0-intensity)
+
 
 
 def calculate_plate_order(available_plates: Counter, bar_weight: float,

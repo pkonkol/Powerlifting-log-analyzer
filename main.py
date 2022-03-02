@@ -9,7 +9,7 @@ from collections import namedtuple
 from colorama import Fore, Back, Style
 from enum import Enum
 from typing import List
-from utils import calculate_e1RM, get_percentage
+from utils import calculate_e1RM, get_percentage, calculate_inol
 from schemes import *
 import logging
 
@@ -33,13 +33,7 @@ class WeightUnit(Enum):
 class Exercise:
 
     DefaultUnit = WeightUnit.KG
-    Weight = namedtuple(
-        "Weight",
-        (
-            "value",
-            "unit",
-        ),
-    )
+    Weight = namedtuple("Weight", ("value", "unit"))
     Set = namedtuple("Set", ("type", "reps", "weight", "rpe"))
 
     def __init__(self, planned_str, done_str, notes):
@@ -56,9 +50,13 @@ class Exercise:
         if self.done:
             self.e1RM = self.get_e1RM()
             self.vol_planned = self.volume_planned()
+            self.vol_done = self.volume_done()
+            self.inol = self.inol_planned()
         else:
             self.e1RM = 0
             self.vol_planned = 0
+            self.vol_done = 0
+            self.inol = 0
 
     def get_e1RM(self):
         logger.debug(self.name)
@@ -386,7 +384,7 @@ class Exercise:
                 
     def volume_planned(self):
         """
-        relative volume (as %1RM) aka Impulse
+        relative volume (as %1RM) 
         """
         vol = 0
         base_percentage = None
@@ -406,16 +404,39 @@ class Exercise:
                 
         return round(vol, 1)
 
+    def inol_planned(self):
+        inol = 0.0
+        base_percentage = None
+        for (i, s) in enumerate(self.sets_planned):
+            if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
+                base_percentage = None
+            if s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
+                continue #skip normal volume for now, just do relative vol from RPE
+            if s.reps and s.rpe:
+                inol += calculate_inol(s.reps, get_percentage(s.reps, s.rpe)) 
+            if s.weight.unit == WeightUnit.PERCENT_TOPSET:
+                if base_percentage == None:
+                    base_percentage = get_percentage(self.sets_planned[i-1].reps,
+                                                     self.sets_planned[i-1].rpe)
+                inol += calculate_inol(s.reps, base_percentage*s.weight.value)
+                
+        return round(inol, 2)
+
+
 
     def volume_done_relative(self):
-        pass
+        # TODO remove as unnecessary? (just divide vol by e1RM)
+        if not self.e1RM:
+            return 0
+        vol = 0.0
+        for s in self.sets_done:
+            pass
 
     def volume_done(self):
         vol = 0.0
         for s in self.sets_done:
             if s.reps and s.weight.value:
                 vol += s.reps * s.weight.value
-
         return vol
 
     def __repr__(self):
@@ -444,9 +465,12 @@ class Exercise:
                         for s in self.sets_planned]
         e1RM = f'|{Fore.MAGENTA} e1RM: {self.e1RM}{Fore.RESET}' if self.e1RM else ''
         vol_planned = f'|{Fore.GREEN} vol_p: {self.vol_planned}%{Fore.RESET}' if self.vol_planned else ''
-        ret = (f'{Fore.RED}{self.name}{Fore.RESET}: '
+        vol_done = f'|{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}' if self.vol_done else ''
+        vol_done_relative = f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1RM, 1)}%{Fore.RESET}' if self.vol_done and self.e1RM else ''
+        inol = f'|{Fore.CYAN} inol: {self.inol}{Fore.RESET}|' if self.inol else ''
+        ret = (f'{Fore.RED}{self.name}{inol}{Fore.RESET}: '
                f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
-               f'{" ".join(sets_done)} {e1RM} {vol_planned} ')
+               f'{" ".join(sets_done)} {e1RM} {vol_planned} {vol_done} {vol_done_relative}')
         if self._next_parallel_exercise:
             return ret + str(self._next_parallel_exercise)
         return ret + '\n'
