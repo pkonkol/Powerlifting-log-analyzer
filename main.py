@@ -1,3 +1,4 @@
+from email.mime import base
 import colorama
 
 colorama.init()
@@ -8,7 +9,7 @@ from collections import namedtuple
 from colorama import Fore, Back, Style
 from enum import Enum
 from typing import List
-from utils import calculate_e1RM
+from utils import calculate_e1RM, get_percentage
 from schemes import *
 import logging
 
@@ -54,8 +55,10 @@ class Exercise:
 
         if self.done:
             self.e1RM = self.get_e1RM()
+            self.vol_planned = self.volume_planned()
         else:
             self.e1RM = 0
+            self.vol_planned = 0
 
     def get_e1RM(self):
         logger.debug(self.name)
@@ -117,6 +120,7 @@ class Exercise:
                     planned_strs[0])
                 self.sets_done = self._match_sets_planned_done(
                     self._sets_done_from_string(second_col_strs[0]))
+                self._sets_done_connect_relative_weight()
 
             # Create new Exercise object with strings stripped from data leftmost of &
             self._next_parallel_exercise = Exercise(
@@ -130,6 +134,7 @@ class Exercise:
         self.sets_planned = self._sets_planned_from_string(planned_str)
         self.sets_done = self._match_sets_planned_done(
             self._sets_done_from_string(second_col_str))
+        self._sets_done_connect_relative_weight()
 
     def _exercise_from_string(self, exercise_str):
         logger.debug(f"Parsing exercise from {exercise_str}")
@@ -367,16 +372,51 @@ class Exercise:
             new_sets_done.append(self.Set(d.type, p.reps, d.weight, d.rpe))
         return new_sets_done
 
-    def _sets_done_connect_relative_weight():
+    def _sets_done_connect_relative_weight(self):
+        """
+        If set with type LOAD_DROP (TODO change it) found in sets_done then
+        set it's weight to first weighted set before it.
+        """
+        for i, s in enumerate(self.sets_done):
+            if s.type != SetType.LOAD_DROP:
+                continue
+            if self.sets_done[i-1].type != SetType.WEIGHT:
+                continue
+            self.sets_done[i] = self.Set(SetType.WEIGHT, s.reps, self.sets_done[i-1].weight, s.rpe)
+                
+    def volume_planned(self):
+        """
+        relative volume (as %1RM) aka Impulse
+        """
+        vol = 0
+        base_percentage = None
+        for (i, s) in enumerate(self.sets_planned):
+            if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
+                base_percentage = None
+            if s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
+                continue #skip normal volume for now, just do relative vol from RPE
+                vol += s.reps * s.weight.value
+            if s.reps and s.rpe:
+                vol += get_percentage(s.reps, s.rpe)*s.reps 
+            if s.weight.unit == WeightUnit.PERCENT_TOPSET:
+                if base_percentage == None:
+                    base_percentage = get_percentage(self.sets_planned[i-1].reps,
+                                                    self.sets_planned[i-1].rpe)
+                vol += base_percentage*s.weight.value*s.reps
+                
+        return round(vol, 1)
+
+
+    def volume_done_relative(self):
         pass
 
-    def volume(self):
+    def volume_done(self):
         vol = 0.0
-        if not self.is_superset:
-            for s in self.sets_done:
-                if s.reps and s.weight.value:
-                    vol += s.reps * s.weight.value
-            return vol
+        for s in self.sets_done:
+            if s.reps and s.weight.value:
+                vol += s.reps * s.weight.value
+
+        return vol
 
     def __repr__(self):
         return f"{self.name}"
@@ -403,9 +443,10 @@ class Exercise:
                          f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}")
                         for s in self.sets_planned]
         e1RM = f'|{Fore.MAGENTA} e1RM: {self.e1RM}{Fore.RESET}' if self.e1RM else ''
+        vol_planned = f'|{Fore.GREEN} vol_p: {self.vol_planned}%{Fore.RESET}' if self.vol_planned else ''
         ret = (f'{Fore.RED}{self.name}{Fore.RESET}: '
                f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
-               f'{" ".join(sets_done)} {e1RM} ')
+               f'{" ".join(sets_done)} {e1RM} {vol_planned} ')
         if self._next_parallel_exercise:
             return ret + str(self._next_parallel_exercise)
         return ret + '\n'

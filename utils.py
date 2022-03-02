@@ -46,6 +46,13 @@ def calculate_e1RM(weight, reps, rpe_str):
     else:
         return 0
 
+def get_percentage(reps: float, rpe: str):
+    if reps and rpe >= 6.0:
+        return DATA['rpe_percentage_chart'][str(rpe)][int(reps - 1)]
+    else:
+        return 0
+
+
 
 def calculate_plate_order(available_plates: Counter, bar_weight: float,
                           goal_weight: float) -> tuple:
