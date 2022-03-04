@@ -1,17 +1,29 @@
 # Powerlifting Log Analyzer
 ## Rewriting that from half-scratch with gspread and may finish this time
-Open Powerlifting Log is a tool for efficient logging and analyzing training programs. It was
+Powerlifting log analyzer is a tool for efficient logging and analyzing training programs. It was
 designed especially for RPE based programming, but might be used with oldschool
 1RM percentage programs. Syntax is made to be concise, allowing one to quickly
 and easily write trainings logs abundant in information.
 
-
 # Usage
 
-## run.py syntax
-```
-python run.py -i <source spreadsheet> [-u {kg|lbs}]
+## main.py
+1. Set up gspread api credentials as in documentation
+1. Set up your spreadsheets name and tab name in main.py
 
+    [Example training spreadsheet](https://docs.google.com/spreadsheets/d/1ZCnDaeNrmib7kMLoITLRB6UEdbyOeiXW3mj8KxXpTs4/edit?usp=sharing)
+    (Just a random mesocycle of my training, not the greatest one)
+3. Run
+```
+python main.py
+```
+### Example output:
+![Example output img](static/PLA_example.png)
+
+## tests
+```
+python tests/exercise.py
+python tests/utils.py
 ```
 
 ### Exercise syntax
@@ -28,7 +40,7 @@ Comp BP w/slingshot : x3@9 |
 | | |
 | - | - |
 | Weight | {`<`float:weight> {kg &#124; lbs} &#124;BW}
-| RPE | {5 &#124;5.5 &#124;6 &#124;... &#124;10 &#124;9.(3) &#124;9.(6)}
+| RPE | {5 &#124;5.5 &#124;6 &#124;... &#124;10 &#124;9.3 &#124;9.6}
 | 1RMpercentage | `0-100.0`
 
 ### Exercise modifiers syntax
@@ -55,6 +67,7 @@ Scheme | Example | Description
 `<sets>x@<rpe>` | 4x@9 | Sets at RPE, reps vary by each set
 `<weight>@<rpe>` | 160@9 | Weight at RPE, reps autoregulated
 `<weight>x<reps>` | 150KGx5 |#
+`<sets>x` | 5x | For simple supplemental work where you don't need to specify reps
 
 ## Sets done syntax
 Scheme | Example | Description
@@ -65,45 +78,50 @@ Scheme | Example | Description
 `<weight>@<rpe>` | 200@8@9,5@10 | Weight at RPE, presumed same set number and reps as planned
 `<`sets>x<reps>{x &#124;@ &#124;/} `<`weight> | 3x10/20kg | ""
 `<reps>x<weight>` | 10x100kg | ""
-`X` | X | No sets were done
-`V` | V | Exercise done as planned
+`[Xx]` | x | No sets were done
+`[V]` | V | Exercise done as planned (TODO generate all sets?)
+`[v]{1,}` | vvvvv | As many sets as v's done (5 in the example)
+`<weight>X[Vv]+` | 40kgXvvvv | As many sets as v's done with given weight (4 in the example)
 `(<reps>,)+@<weight>` | 5,5,4,4,3@BW | Varied number of reps at given weight
 
 ## Superset syntax
 Exercise planned column scheme | Example | Description
 ------ | ------- | -----------
 `<exercise_name> (& <exercise_name>)+ : <planned_sets> (& <planned_sets>)+` | `Lateral raise & leg raise: 3x8 & 3x12` | ""
-`<exercise_name> (& <exercise_name>)+ : <planned_sets> &&` | `Lateral raise & leg raise: 3x12 &&` | The same planned sets scheme will be applied to both exercises
+`<exercise_name> (& <exercise_name>)+ : <planned_sets> ` | `Lateral raise & leg raise: 3x12 ` | The same planned sets scheme will be applied to both exercises
 
 Sets done column scheme | Example | Description
 ------ | ------- | -----------
 `<sets_done> (& <sets_done>)+ `| `2x8/20kg 8x15kg & 3x8/100kg` | ""
-`<sets_done> &&` | `3x8/20kg &&` | The same done sets will be applied to both exercises
+`<sets_done> &&` | `3x8/20kg &&` | The same done sets will be applied to both exercises (TODO really?)
 
 
 
-
+## Naming
+**B\d+** for training **Block**
+**M\d+** for training **Microcycle**
+**S\d+** for training **Session**
 ## Microcycle syntax
 
-| D1 | `<date> [@ <place>]` | D2 | `<date> [@ <place>]` | ...|
-| -- | ------ | -- | ------ | -- |
-| Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... |
-| Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... |
-| . | . | . | . | ... |
-| . | . | . | . | ... |
-| . | . | . | . | ... |
+| S1 | `<date> [@ <place>]` | S2 | `<date> [@ <place>]` | ...| GPP | -- |
+| -- | ------ | -- | ------ | -- | -- | -- |
+| Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#1 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... | Bouldering | 01.02.03 18:00-20:00 |
+| Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | Exercise#2 [modifiers]: [Set#1] ... [Set#N] | [Set\_done#1] ... [Set\_done#N] | ... | . | . |
+| . | . | . | . | ... | . | . |
+| . | . | . | . | ... | . | . |
+| . | . | . | . | ... | . | . |
 
 
 ## Mesocycle syntax
 
-| Mesocycle: [name] | `<date_start>` | |
+| B1 [: name] | `<date_start>` | |
 | ----------------- |-|-|
-| W1 | Microcycle#1 ->
+| M1 | Microcycle#1 ->
 | [date] | \/
 | . |
 | . |
 | . |
-| W2 | Microcycle#2 ->
+| M2 | Microcycle#2 ->
 | [date] | \/
 | . |
 | . |
