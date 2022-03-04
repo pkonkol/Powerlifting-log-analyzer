@@ -53,7 +53,7 @@ def get_percentage(reps: float, rpe: str):
         return 0
 
 def calculate_inol(reps, intensity):
-    return reps/(100.0-intensity)
+    return reps/(100.01-intensity)
 
 
 

@@ -5,16 +5,21 @@ designed especially for RPE based programming, but might be used with oldschool
 1RM percentage programs. Syntax is made to be concise, allowing one to quickly
 and easily write trainings logs abundant in information.
 
-
 # Usage
 
 ## main.py
 1. Set up gspread api credentials as in documentation
 1. Set up your spreadsheets name and tab name in main.py
-1. Run
+
+    [Example training spreadsheet](https://docs.google.com/spreadsheets/d/1ZCnDaeNrmib7kMLoITLRB6UEdbyOeiXW3mj8KxXpTs4/edit?usp=sharing)
+    (Just a random mesocycle of my training, not the greatest one)
+3. Run
 ```
 python main.py
 ```
+### Example output:
+![Example output img](static/PLA_example.png)
+
 ## tests
 ```
 python tests/exercise.py

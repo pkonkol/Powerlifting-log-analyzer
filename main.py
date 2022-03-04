@@ -78,8 +78,8 @@ class Exercise:
             return x
         x = max([
             calculate_e1RM(ws.weight.value, ws.reps, ws.rpe)
-            for ws in self.sets_done
-        ])
+            for ws in self.sets_done if ws.weight.value and ws.reps and ws.rpe
+        ], default=0)
         return x
 
     def _workout_from_string(self, first_col_str, second_col_str):
@@ -171,25 +171,21 @@ class Exercise:
             self.done = False
             return []  # return sets_done := []
         for set_str in sets_str:
-            while True:
-                logger.debug(f'Parsing while round for "{set_str}"')
-                try:
-                    match = [(pattern[0].match(set_str), index + 1, pattern[1])
-                             for index, pattern in enumerate(SCHEMES_DONE)
-                             if pattern[0].match(set_str)][0]
-                    logging.debug(f"Done: {sets_str}, {set_str}, "
-                                  f"match={match}, groups={match[0].groups()}")
-                except IndexError as e:
-                    logger.exception(e)
-                    logger.info(
-                        f"Failed to match set {set_str} with any of schemes")
-                    break
-                break
+            logger.debug(f'Parsing while round for "{set_str}"')
+            try:
+                match = [(pattern[0].match(set_str), index + 1, pattern[1])
+                            for index, pattern in enumerate(SCHEMES_DONE)
+                            if pattern[0].match(set_str)][0]
+                logging.debug(f"Done: {sets_str}, {set_str}, "
+                                f"match={match}, groups={match[0].groups()}")
+            except IndexError as e:
+                logger.exception(e)
+                logger.info(
+                    f"Failed to match set {set_str} with any of schemes")
+                match = ('error', set_str)
             sets_done.extend(self._parse_matched_set(match))
             # these are TMP and suck
-            if sets_done == [
-                    0,
-            ]:
+            if sets_done == [ 0, ]:
                 self.done = False
                 sets_done = []
                 break
@@ -209,20 +205,18 @@ class Exercise:
         sets_str = re.split(" |;", sets_planned_str.strip())
         logging.debug(sets_str)
         for set_str in sets_str:
-            while True:
-                logger.debug(f"Parsing while round for {set_str}")
-                try:
-                    match = [(pattern[0].match(set_str), index + 1, pattern[1])
-                             for index, pattern in enumerate(SCHEMES_PLANNED)
-                             if pattern[0].match(set_str)][0]
-                    logger.info(f"Planned: {sets_str}, {set_str}, "
-                                f"match={match}, groups={match[0].groups()}")
-                except IndexError as e:
-                    logger.exception(e)
-                    logger.debug(
-                        f"Failed to match set {set_str} with any of schemes")
-                    break
-                break
+            logger.debug(f"Parsing while round for {set_str}")
+            try:
+                match = [(pattern[0].match(set_str), index + 1, pattern[1])
+                            for index, pattern in enumerate(SCHEMES_PLANNED)
+                            if pattern[0].match(set_str)][0]
+                logger.info(f"Planned: {sets_str}, {set_str}, "
+                            f"match={match}, groups={match[0].groups()}")
+            except IndexError as e:
+                logger.exception(e)
+                logger.debug(
+                    f"Failed to match set {set_str} with any of schemes")
+                match = ('error', set_str)
 
             sets_planned.extend(self._parse_matched_set(match))
         logger.debug("Finish sets_planned_from_string-----------")
@@ -232,12 +226,13 @@ class Exercise:
         # This whole shit needs refactoring
         # Hard to get what is going on here
         # Maybe legit parser, like parser instead of regexes would really make sense
+        if match[0] == 'error':
+            return (self.Set(SetType.ERROR, None, self.Weight(None, None), None),)
         groupdict = match[0].groupdict()
         # TODO rewrite these exceptions into normal Set() object
         # This shit shouldn't even be here but with the rest of the groups
         if "undone" in groupdict:
             return (0, )
-
         logger.debug(f"groupdict for :{match}: {groupdict}"
                      )  # wtf is this even,dont remember
         sets = []
@@ -592,10 +587,8 @@ if __name__ == "__main__":
         # next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         # TODO send mesocycle height to the get_ function
         # change to get_mesocycle that parses only one, move height management to upper level
-        last_row = blocks[i +
-                          1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
+        last_row = blocks[i+1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
-        break
-    breakpoint()
-    print(mesocycles[0])
-    logger.info(f"Parsed mesocycle[0]: {mesocycles[0]}")
+    #breakpoint()
+    for m in mesocycles:
+        print(m)

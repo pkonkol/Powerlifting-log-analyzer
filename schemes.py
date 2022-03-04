@@ -26,6 +26,7 @@ class SetType(Enum): # Likely TODO split this into planned and done
     RPE_RAMP = 5 # to remove?
     DONE = 6 # Boolean - just done one set with no additional info
     DONE_ALL = 7 # Done all sets as planned
+    ERROR = 8 #Failed parsing
 
 
 SCHEMES_PLANNED = (
