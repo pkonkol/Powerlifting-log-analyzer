@@ -447,7 +447,8 @@ class Exercise:
                 sets_done = [
                     (f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
                      f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
-                     f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}")
+                     f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
+                     f"{Back.RED}{'ERROR' if s.type == SetType.ERROR else ''}{Back.RESET}")
                     for s in self.sets_done
                 ]
         else:
@@ -456,8 +457,10 @@ class Exercise:
             ]
         sets_planned = [(f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
                          f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
-                         f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}")
+                         f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
+                         f"{Back.RED}{'ERROR' if s.type == SetType.ERROR else ''}{Back.RESET}")
                         for s in self.sets_planned]
+
         e1RM = f'|{Fore.MAGENTA} e1RM: {self.e1RM}{Fore.RESET}' if self.e1RM else ''
         vol_planned = f'|{Fore.GREEN} vol_p: {self.vol_planned}%{Fore.RESET}' if self.vol_planned else ''
         vol_done = f'|{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}' if self.vol_done else ''
