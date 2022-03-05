@@ -1,7 +1,6 @@
 import inspect
 import os
 import sys
-from tkinter.messagebox import NO
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))

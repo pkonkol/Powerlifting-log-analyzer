@@ -1,0 +1,19 @@
+name: Dev GA test
+on:
+  push:
+    branches:
+      - master
+      - develop-rewrite
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - run: pip install -r requirements.txt
+      - run: python tests/exercise.py
+      - run: python tests/utils.py
