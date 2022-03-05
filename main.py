@@ -1,5 +1,4 @@
 import logging
-import pprint
 import re
 from collections import namedtuple
 from enum import Enum
@@ -7,9 +6,9 @@ from typing import List
 
 import colorama
 import gspread
-from colorama import Back, Fore, Style
+from colorama import Back, Fore
 
-from schemes import *
+from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
 from utils import calculate_e1RM, calculate_inol, get_percentage
 
 colorama.init()
@@ -64,12 +63,11 @@ class Exercise:
         logger.debug(self.name)
         logger.debug(self.sets_done)
         logger.debug((ws for ws in self.sets_done))
-        if (self.is_superset
-                #TMP fix, TODO if done there are always sets (fails on superset)
-                # "vvvvv" done pattern not matched correctly
-                # may jus throw this away for supersets anyway, i do just easy supplemental work
-                # on supersets anyway
-                or self.sets_done == []):
+        # TMP fix, TODO if done there are always sets (fails on superset)
+        # "vvvvv" done pattern not matched correctly
+        # may jus throw this away for supersets anyway, i do just easy
+        # supplemental work on supersets anyway
+        if (self.is_superset or self.sets_done == []):
             return 0
             x = [
                 max([
@@ -102,7 +100,7 @@ class Exercise:
                 planned_strs = planned_str.split("&", 1)
             else:
                 planned_strs = [planned_str,
-                                planned_str]  #this idiocy twice...
+                                planned_str]  # this idiocy twice...
             if "&" in second_col_str:
                 second_col_strs = second_col_str.split("&", 1)
                 second_col_strs = [s.strip() for s in second_col_strs]
@@ -111,7 +109,7 @@ class Exercise:
                 # TODO write it well
                 second_col_strs = [second_col_str, second_col_str]
 
-            if self._next_parallel_exercise == None:
+            if self._next_parallel_exercise is None:
                 logger.debug(f"No _next_parallel_exercise for {exercise_strs}"
                              f";; {planned_strs};; {second_col_strs}")
                 self.name, self.modifiers = self._exercise_from_string(
@@ -139,11 +137,11 @@ class Exercise:
     def _exercise_from_string(self, exercise_str):
         logger.debug(f"Parsing exercise from {exercise_str}")
         modifier_schemes = (
-            re.compile(" w/(?P<with>[a-zA-Z0-9_']+)"),  #'with x',
-            re.compile(" t/(?P<tempo>\d{4})"),  #'tempo XXXX',
-            re.compile(" wo/(?P<without>[a-zA-Z0-9_']+)"),  #'without x',
-            re.compile(" p/(?P<pattern>[a-zA-z0-9_']+)"),
-        )  #'movement patter mod'
+            re.compile(' w/(?P<with>[a-zA-Z0-9_\']+)'),    # 'with x',
+            re.compile(' t/(?P<tempo>\d{4})'),    # 'tempo XXXX',
+            re.compile(' wo/(?P<without>[a-zA-Z0-9_\']+)'),    # 'without x',
+            re.compile(' p/(?P<pattern>[a-zA-z0-9_\']+)'),
+        )    # 'movement patter mod'
 
         name = exercise_str
         modifiers = [pattern.findall(name) for pattern in modifier_schemes]
@@ -161,25 +159,22 @@ class Exercise:
             m["start"],
             m["sets"],
             m["end"],
-        ))(re.match("^(?P<start>[^)]*\))?(?P<sets>[^(]*)(?P<end>\(.*)?$",
-                    sets_str))
+        ))(re.match("^(?P<start>[^)]*\))?(?P<sets>[^(]*)(?P<end>\(.*)?$", sets_str))
         logger.debug(
-            f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}"
-        )
-        sets_str = list(
-            filter(lambda x: x != '', re.split(" |;", sets_str.strip())))
+            f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}")
+        sets_str = list(filter(lambda x: x != '', re.split(" |;", sets_str.strip())))
         sets_done = []
         if sets_str == []:
             self.done = False
-            return []  # return sets_done := []
+            return []    # return sets_done := []
         for set_str in sets_str:
             logger.debug(f'Parsing while round for "{set_str}"')
             try:
                 match = [(pattern[0].match(set_str), index + 1, pattern[1])
-                            for index, pattern in enumerate(SCHEMES_DONE)
-                            if pattern[0].match(set_str)][0]
+                         for index, pattern in enumerate(SCHEMES_DONE)
+                         if pattern[0].match(set_str)][0]
                 logging.debug(f"Done: {sets_str}, {set_str}, "
-                                f"match={match}, groups={match[0].groups()}")
+                              f"match={match}, groups={match[0].groups()}")
             except IndexError as e:
                 logger.exception(e)
                 logger.info(
@@ -187,7 +182,7 @@ class Exercise:
                 match = ('error', set_str)
             sets_done.extend(self._parse_matched_set(match))
             # these are TMP and suck
-            if sets_done == [ 0, ]:
+            if sets_done == [0, ]:
                 self.done = False
                 sets_done = []
                 break
@@ -210,8 +205,8 @@ class Exercise:
             logger.debug(f"Parsing while round for {set_str}")
             try:
                 match = [(pattern[0].match(set_str), index + 1, pattern[1])
-                            for index, pattern in enumerate(SCHEMES_PLANNED)
-                            if pattern[0].match(set_str)][0]
+                         for index, pattern in enumerate(SCHEMES_PLANNED)
+                         if pattern[0].match(set_str)][0]
                 logger.info(f"Planned: {sets_str}, {set_str}, "
                             f"match={match}, groups={match[0].groups()}")
             except IndexError as e:
@@ -252,10 +247,10 @@ class Exercise:
                 "(", "").replace(")", "")) if "rpe" in groupdict else None),
             "weight":
             (float(match[0].group("weight").replace(",", ".")) if
-             "weight" in groupdict and groupdict["weight"] != None else None),
+             "weight" in groupdict and groupdict["weight"] is not None else None),
             "percentage":
-            (float(match[0].group("percentage").replace(",", ".")) /
-             100.0 if "percentage" in groupdict else None),
+            (float(match[0].group("percentage").replace(",", ".")) / 100.0
+             if "percentage" in groupdict else None),
             "multi_rpe":
             match[0].group("multi_rpe").split("@")[1:]
             if "multi_rpe" in groupdict else None,
@@ -288,7 +283,7 @@ class Exercise:
             elif getdict["set_type"] == SetType.FATIGUE_PERCENT:
                 getdict["unit"] = None
             else:
-                raise StandardError("Unsupported Set Type for percentage")
+                raise Exception("Unsupported Set Type for percentage")
         elif getdict["set_type"] == SetType.LOAD_DROP:
             getdict["unit"] = WeightUnit.PERCENT_TOPSET
             getdict["percentage"] = 1.0
@@ -353,14 +348,14 @@ class Exercise:
 
     def _match_sets_planned_done(self, done):
         """
-        If len() of done and planned sets is the same and there are no rep ranges on done
-        sets then presume that done_set[i] corresponds to planned_set[i]
-        While this may not seem as the cleanest solution I use it in practice all the time
-        inside my spreadsheets.
+        If len() of done and planned sets is the same and there are no rep
+        ranges on done sets then presume that done_set[i] corresponds to
+        planned_set[i] While this may not seem as the cleanest solution I use
+        it in practice all the time inside my spreadsheets.
         """
         if not len(done) == len(self.sets_planned):
             return done
-        if not all([s.reps == None for s in done]):
+        if not all([s.reps is None for s in done]):
             return done
         new_sets_done = []
         for p, d in zip(self.sets_planned, done):
@@ -375,13 +370,14 @@ class Exercise:
         for i, s in enumerate(self.sets_done):
             if s.type != SetType.LOAD_DROP:
                 continue
-            if self.sets_done[i-1].type != SetType.WEIGHT:
+            if self.sets_done[i - 1].type != SetType.WEIGHT:
                 continue
-            self.sets_done[i] = self.Set(SetType.WEIGHT, s.reps, self.sets_done[i-1].weight, s.rpe)
-                
+            self.sets_done[i] = self.Set(SetType.WEIGHT, s.reps,
+                                         self.sets_done[i - 1].weight, s.rpe)
+
     def volume_planned(self):
         """
-        relative volume (as %1RM) 
+        relative volume (as %1RM)
         """
         vol = 0
         base_percentage = None
@@ -389,17 +385,18 @@ class Exercise:
             if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
                 base_percentage = None
             elif s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
-                continue #skip normal volume for now, just do relative vol from RPE
+                continue  # skip normal volume for now, just do relative vol from RPE
                 vol += s.reps * s.weight.value
             elif s.reps and s.rpe:
-                vol += get_percentage(s.reps, s.rpe)*s.reps 
+                vol += get_percentage(s.reps, s.rpe) * s.reps
             elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
-                if base_percentage == None:
-                    base_percentage = get_percentage(self.sets_planned[i-1].reps,
-                                                    self.sets_planned[i-1].rpe)
+                if base_percentage is not None:
+                    base_percentage = get_percentage(
+                        self.sets_planned[i - 1].reps,
+                        self.sets_planned[i - 1].rpe)
                 if s.reps and s.rpe:
-                    vol += base_percentage*s.weight.value*s.reps
-                
+                    vol += base_percentage * s.weight.value * s.reps
+
         return round(vol, 1)
 
     def inol_planned(self):
@@ -409,27 +406,25 @@ class Exercise:
             if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
                 base_percentage = None
             elif s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
-                continue #skip normal volume for now, just do relative vol from RPE
+                continue  # skip normal volume for now, just do relative vol from RPE
             elif s.reps and s.rpe:
-                inol += calculate_inol(s.reps, get_percentage(s.reps, s.rpe)) 
+                inol += calculate_inol(s.reps, get_percentage(s.reps, s.rpe))
             elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
-                if base_percentage == None:
-                    base_percentage = get_percentage(self.sets_planned[i-1].reps,
-                                                     self.sets_planned[i-1].rpe)
+                if base_percentage is None:
+                    base_percentage = get_percentage(self.sets_planned[i - 1].reps,
+                                                     self.sets_planned[i - 1].rpe)
                 if s.reps and s.rpe:
-                    inol += calculate_inol(s.reps, base_percentage*s.weight.value)
-                
+                    inol += calculate_inol(s.reps, base_percentage * s.weight.value)
+
         return round(inol, 2)
 
-
-
-    def volume_done_relative(self):
-        # TODO remove as unnecessary? (just divide vol by e1RM)
-        if not self.e1RM:
-            return 0
-        vol = 0.0
-        for s in self.sets_done:
-            pass
+    # def volume_done_relative(self):
+    #     # TODO remove as unnecessary? (just divide vol by e1RM)
+    #     if not self.e1RM:
+    #         return 0
+    #     vol = 0.0
+    #     for s in self.sets_done:
+    #         pass
 
     def volume_done(self):
         vol = 0.0
@@ -444,35 +439,41 @@ class Exercise:
     def __str__(self):
         if self.done:
             logger.debug(f"{self.name}: {self.sets_done}")
-            if len(self.sets_done
-                   ) == 1 and self.sets_done[0].type == SetType.DONE_ALL:
+            if len(self.sets_done) == 1 and self.sets_done[0].type == SetType.DONE_ALL:
                 sets_done = (f"{Fore.GREEN}V(all){Fore.RESET}", )
             else:
-                sets_done = [
-                    (f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
-                     f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
-                     f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
-                     f"{Back.RED}{'ERROR' if s.type == SetType.ERROR else ''}{Back.RESET}")
-                    for s in self.sets_done
-                ]
+                sets_done = [(
+                    f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
+                    f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
+                    f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
+                    f"{Back.RED}{'ERR' if s.type == SetType.ERROR else ''}{Back.RESET}"
+                ) for s in self.sets_done]
         else:
             sets_done = [
                 f"{Fore.LIGHTRED_EX} X {Fore.RESET}",
             ]
-        sets_planned = [(f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
-                         f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
-                         f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
-                         f"{Back.RED}{'ERROR' if s.type == SetType.ERROR else ''}{Back.RESET}")
-                        for s in self.sets_planned]
+        sets_planned = [
+            (f"{Fore.RED}{s.weight.value or ''}{Fore.RESET}"
+             f"x{Fore.LIGHTYELLOW_EX}{s.reps or ''}{Fore.RESET}"
+             f"@{Fore.LIGHTGREEN_EX}{s.rpe or ''}{Fore.RESET}"
+             f"{Back.RED}{'ERR' if s.type == SetType.ERROR else ''}{Back.RESET}")
+            for s in self.sets_planned
+        ]
 
         e1RM = f'|{Fore.MAGENTA} e1RM: {self.e1RM}{Fore.RESET}' if self.e1RM else ''
-        vol_planned = f'|{Fore.GREEN} vol_p: {self.vol_planned}%{Fore.RESET}' if self.vol_planned else ''
-        vol_done = f'|{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}' if self.vol_done else ''
-        vol_done_relative = f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1RM, 1)}%{Fore.RESET}' if self.vol_done and self.e1RM else ''
+        vol_planned = (f'|{Fore.GREEN} vol_p: '
+                       f'{self.vol_planned}%{Fore.RESET}') if self.vol_planned else ''
+        vol_done = (f'|{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
+                    if self.vol_done else '')
+        vol_done_relative = (
+            f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1RM, 1)}%{Fore.RESET}'
+            if self.vol_done and self.e1RM else '')
         inol = f'|{Fore.CYAN} inol: {self.inol}{Fore.RESET}|' if self.inol else ''
-        ret = (f'{Fore.RED}{self.name}{inol}{Fore.RESET}: '
-               f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
-               f'{" ".join(sets_done)} {e1RM} {vol_planned} {vol_done} {vol_done_relative}')
+        ret = (
+            f'{Fore.RED}{self.name}{inol}{Fore.RESET}: '
+            f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
+            f'{" ".join(sets_done)} {e1RM} {vol_planned} {vol_done} {vol_done_relative}'
+        )
         if self._next_parallel_exercise:
             return ret + str(self._next_parallel_exercise)
         return ret + '\n'
@@ -520,7 +521,6 @@ def get_exercise(planned_cell, done_cell):
 
 
 def get_session(planned_cells, done_cells):
-    sessions = []
     exercises = []
     for p, d in zip(planned_cells[1:], done_cells[1:]):
         if p.value == "":
@@ -553,7 +553,6 @@ def get_microcycles(weeks_split):
 
 
 def get_mesocycle(block, last_row):
-    mesocycles = []
     pattern = re.compile("^[WwMm][0-9]+")
     # for i, b in enumerate(blocks):
     micro_a1 = (gspread.utils.rowcol_to_a1(block.row, block.col) + ":" +
@@ -591,11 +590,12 @@ if __name__ == "__main__":
     blocks = wksh.findall(re.compile("^[Bb][0-9]+$"), in_column=0)
     mesocycles = []
     for i, block in enumerate(blocks):
-        # next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
-        # TODO send mesocycle height to the get_ function
-        # change to get_mesocycle that parses only one, move height management to upper level
-        last_row = blocks[i+1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
+        # next_block_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else
+        # G_HEIGHT - 1 TODO send mesocycle height to the get_ function change
+        # to get_mesocycle that parses only one, move height management to upper
+        # level
+        last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
-    #breakpoint()
+    # breakpoint()
     for m in mesocycles:
         print(m)
