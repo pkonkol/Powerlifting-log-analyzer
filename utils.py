@@ -1,6 +1,5 @@
 import json
 import math
-
 from collections import Counter
 
 DATASETS = 'datasets.json'

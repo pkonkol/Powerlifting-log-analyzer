@@ -1,14 +1,16 @@
-import os, sys, inspect
+import inspect
+import os
+import sys
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-import unittest
 import logging
+import unittest
 
-from utils import roundWithBias, calculate_e1RM
+from utils import calculate_e1RM, roundWithBias
 
 logger = logging.getLogger(__name__)
 logger.info("Starting tests/utils.py")

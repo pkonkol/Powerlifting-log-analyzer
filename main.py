@@ -1,17 +1,18 @@
-from email.mime import base
-import colorama
-
-colorama.init()
-import gspread
-import re
+import logging
 import pprint
+import re
 from collections import namedtuple
-from colorama import Fore, Back, Style
 from enum import Enum
 from typing import List
-from utils import calculate_e1RM, get_percentage, calculate_inol
+
+import colorama
+import gspread
+from colorama import Back, Fore, Style
+
 from schemes import *
-import logging
+from utils import calculate_e1RM, calculate_inol, get_percentage
+
+colorama.init()
 
 logging.basicConfig(
     filename="pla.log",
@@ -47,16 +48,17 @@ class Exercise:
         self._workout_from_string(planned_str, done_str)
         self.notes = notes
 
+        self.inol = self.inol_planned()
+        self.vol_planned = self.volume_planned()
+
         if self.done:
             self.e1RM = self.get_e1RM()
-            self.vol_planned = self.volume_planned()
             self.vol_done = self.volume_done()
-            self.inol = self.inol_planned()
         else:
             self.e1RM = 0
-            self.vol_planned = 0
+            # self.vol_planned = 0
             self.vol_done = 0
-            self.inol = 0
+            # self.inol = 0
 
     def get_e1RM(self):
         logger.debug(self.name)
@@ -386,16 +388,17 @@ class Exercise:
         for (i, s) in enumerate(self.sets_planned):
             if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
                 base_percentage = None
-            if s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
+            elif s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
                 continue #skip normal volume for now, just do relative vol from RPE
                 vol += s.reps * s.weight.value
-            if s.reps and s.rpe:
+            elif s.reps and s.rpe:
                 vol += get_percentage(s.reps, s.rpe)*s.reps 
-            if s.weight.unit == WeightUnit.PERCENT_TOPSET:
+            elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
                 if base_percentage == None:
                     base_percentage = get_percentage(self.sets_planned[i-1].reps,
                                                     self.sets_planned[i-1].rpe)
-                vol += base_percentage*s.weight.value*s.reps
+                if s.reps and s.rpe:
+                    vol += base_percentage*s.weight.value*s.reps
                 
         return round(vol, 1)
 
@@ -405,15 +408,16 @@ class Exercise:
         for (i, s) in enumerate(self.sets_planned):
             if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
                 base_percentage = None
-            if s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
+            elif s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
                 continue #skip normal volume for now, just do relative vol from RPE
-            if s.reps and s.rpe:
+            elif s.reps and s.rpe:
                 inol += calculate_inol(s.reps, get_percentage(s.reps, s.rpe)) 
-            if s.weight.unit == WeightUnit.PERCENT_TOPSET:
+            elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
                 if base_percentage == None:
                     base_percentage = get_percentage(self.sets_planned[i-1].reps,
                                                      self.sets_planned[i-1].rpe)
-                inol += calculate_inol(s.reps, base_percentage*s.weight.value)
+                if s.reps and s.rpe:
+                    inol += calculate_inol(s.reps, base_percentage*s.weight.value)
                 
         return round(inol, 2)
 
@@ -528,7 +532,7 @@ def get_session(planned_cells, done_cells):
 
 def get_microcycles(weeks_split):
     micros = []
-    pattern = re.compile("^[Dd][0-9]+")  # Ignore GPP column for now
+    pattern = re.compile("^[DdSs][0-9]+")  # Ignore GPP column for now
     # breakpoint()
     for c in weeks_split:
         sessions = []
@@ -550,7 +554,7 @@ def get_microcycles(weeks_split):
 
 def get_mesocycle(block, last_row):
     mesocycles = []
-    pattern = re.compile("^[Ww][0-9]+")
+    pattern = re.compile("^[WwMm][0-9]+")
     # for i, b in enumerate(blocks):
     micro_a1 = (gspread.utils.rowcol_to_a1(block.row, block.col) + ":" +
                 gspread.utils.rowcol_to_a1(last_row, G_WIDTH))

@@ -1,4 +1,6 @@
-import os, sys, inspect
+import inspect
+import os
+import sys
 from tkinter.messagebox import NO
 
 currentdir = os.path.dirname(
@@ -6,9 +8,10 @@ currentdir = os.path.dirname(
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-import unittest
 import logging
 import pprint
+import unittest
+
 from main import Exercise, WeightUnit
 from schemes import SetType
 
