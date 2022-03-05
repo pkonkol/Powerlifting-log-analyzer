@@ -17,3 +17,9 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python tests/exercise.py
       - run: python tests/utils.py
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/python@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high

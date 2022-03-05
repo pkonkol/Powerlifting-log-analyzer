@@ -1,3 +1,5 @@
 gspread==5.1.1
-yapf
 colorama
+yapf
+pre-commit
+flake8
