@@ -9,7 +9,7 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import calculate_e1RM, calculate_inol, get_percentage
+from utils import calculate_e1rm, calculate_inol, get_percentage
 
 colorama.init()
 
@@ -51,15 +51,15 @@ class Exercise:
         self.vol_planned = self.volume_planned()
 
         if self.done:
-            self.e1RM = self.get_e1RM()
+            self.e1rm = self.get_e1rm()
             self.vol_done = self.volume_done()
         else:
-            self.e1RM = 0
+            self.e1rm = 0
             # self.vol_planned = 0
             self.vol_done = 0
             # self.inol = 0
 
-    def get_e1RM(self):
+    def get_e1rm(self):
         logger.debug(self.name)
         logger.debug(self.sets_done)
         logger.debug((ws for ws in self.sets_done))
@@ -67,25 +67,18 @@ class Exercise:
         # "vvvvv" done pattern not matched correctly
         # may jus throw this away for supersets anyway, i do just easy
         # supplemental work on supersets anyway
-        if (self.is_superset or self.sets_done == []):
+        if (self.is_superset or not self.sets_done):
             return 0
-            x = [
-                max([
-                    calculate_e1RM(ws.weight.value, ws.reps, ws.rpe)
-                    for ws in e
-                ]) for e in self.sets_done
-            ]
-            return x
-        x = max([
-            calculate_e1RM(ws.weight.value, ws.reps, ws.rpe)
+        e1rm = max([
+            calculate_e1rm(ws.weight.value, ws.reps, ws.rpe)
             for ws in self.sets_done if ws.weight.value and ws.reps and ws.rpe
         ], default=0)
-        return x
+        return e1rm
 
     def _workout_from_string(self, first_col_str, second_col_str):
         # First column contains exercise with modifiers and planned sets,
         # second column contains done sets
-        logger.debug("PARSING WORKOUT" + "-" * 20)
+        logger.debug(f'PARSING WORKOUT {"-"*20}')
         logger.debug(
             f"first_col_str: {first_col_str}; second_col_str: {second_col_str}"
         )
@@ -134,24 +127,24 @@ class Exercise:
             self._sets_done_from_string(second_col_str))
         self._sets_done_connect_relative_weight()
 
-    def _exercise_from_string(self, exercise_str):
+    @staticmethod
+    def _exercise_from_string(exercise_str):
         logger.debug(f"Parsing exercise from {exercise_str}")
         modifier_schemes = (
-            re.compile(' w/(?P<with>[a-zA-Z0-9_\']+)'),    # 'with x',
-            re.compile(' t/(?P<tempo>\d{4})'),    # 'tempo XXXX',
-            re.compile(' wo/(?P<without>[a-zA-Z0-9_\']+)'),    # 'without x',
-            re.compile(' p/(?P<pattern>[a-zA-z0-9_\']+)'),
-        )    # 'movement patter mod'
-
+            re.compile(r' w/(?P<with>[a-zA-Z0-9_\']+)'),  # 'with x',
+            re.compile(r' t/(?P<tempo>\d{4})'),  # 'tempo XXXX',
+            re.compile(r' wo/(?P<without>[a-zA-Z0-9_\']+)'),  # 'without x',
+            re.compile(r' p/(?P<pattern>[a-zA-z0-9_\']+)'),  # 'movement patter mod'
+        )
         name = exercise_str
         modifiers = [pattern.findall(name) for pattern in modifier_schemes]
         logging.debug(f"Modifiers: {modifiers}")
         # TODO normal data structure for modifier, eg dict
-        for m in modifiers:
-            for k in m:  # Remove modifiers from name
-                name = re.sub(f" \w+/{k}(?: |$)", " ", name)
+        for modifier in modifiers:
+            for modifier_name in modifier:  # Remove modifiers from name
+                name = re.sub(fr" \w+/{modifier_name}(?: |$)", " ", name)
         # why was there rstrip instead of strip()? It should work
-        return (name.strip(), modifiers)
+        return name.strip(), modifiers
 
     def _sets_done_from_string(self, sets_str):
         logger.debug(f"-----------Parsing sets done from {sets_str}")
@@ -159,12 +152,12 @@ class Exercise:
             m["start"],
             m["sets"],
             m["end"],
-        ))(re.match("^(?P<start>[^)]*\))?(?P<sets>[^(]*)(?P<end>\(.*)?$", sets_str))
+        ))(re.match(r"^(?P<start>[^)]*\))?(?P<sets>[^(]*)(?P<end>\(.*)?$", sets_str))
         logger.debug(
             f"Splitting time from sets done: {start_time};; {sets_str};; {end_time}")
         sets_str = list(filter(lambda x: x != '', re.split(" |;", sets_str.strip())))
         sets_done = []
-        if sets_str == []:
+        if not sets_str:
             self.done = False
             return []    # return sets_done := []
         for set_str in sets_str:
@@ -175,8 +168,8 @@ class Exercise:
                          if pattern[0].match(set_str)][0]
                 logging.debug(f"Done: {sets_str}, {set_str}, "
                               f"match={match}, groups={match[0].groups()}")
-            except IndexError as e:
-                logger.exception(e)
+            except IndexError as err:
+                logger.exception(err)
                 logger.info(
                     f"Failed to match set {set_str} with any of schemes")
                 match = ('error', set_str)
@@ -198,7 +191,7 @@ class Exercise:
         sets_planned_str = sets_planned_str.strip()
         if sets_planned_str == "":
             return []
-        logging.debug("sets planned str:" + sets_planned_str + "/")
+        logging.debug(f"sets planned str: {sets_planned_str}/")
         sets_str = re.split(" |;", sets_planned_str.strip())
         logging.debug(sets_str)
         for set_str in sets_str:
@@ -209,8 +202,8 @@ class Exercise:
                          if pattern[0].match(set_str)][0]
                 logger.info(f"Planned: {sets_str}, {set_str}, "
                             f"match={match}, groups={match[0].groups()}")
-            except IndexError as e:
-                logger.exception(e)
+            except IndexError as err:
+                logger.exception(err)
                 logger.debug(
                     f"Failed to match set {set_str} with any of schemes")
                 match = ('error', set_str)
@@ -288,11 +281,11 @@ class Exercise:
             getdict["unit"] = WeightUnit.PERCENT_TOPSET
             getdict["percentage"] = 1.0
         elif getdict["done"] and len(getdict["done"]) == 1:
-            getdict["set_type"] == SetType.DONE_ALL
+            getdict["set_type"] = SetType.DONE_ALL
         # So here we handle the cases of multisets if necessary and at
         # the end we append that to return object
         if "sets" in groupdict:
-            for i in range(0, getdict["sets"]):
+            for _ in range(0, getdict["sets"]):
                 _set = self.create_set_object(**getdict)
                 sets.append(_set)
                 if getdict["set_type"] == SetType.RPE:
@@ -342,9 +335,10 @@ class Exercise:
         unit=None,
         **kwargs,
     ):
-        w = self.Weight(
+        del kwargs  # Unused, but passed dict may have additional elements
+        weight = self.Weight(
             weight if weight else percentage if percentage else None, unit)
-        return self.Set(set_type, reps, w, rpe)
+        return self.Set(set_type, reps, weight, rpe)
 
     def _match_sets_planned_done(self, done):
         """
@@ -355,7 +349,7 @@ class Exercise:
         """
         if not len(done) == len(self.sets_planned):
             return done
-        if not all([s.reps is None for s in done]):
+        if not all((s.reps is None for s in done)):
             return done
         new_sets_done = []
         for p, d in zip(self.sets_planned, done):
@@ -367,13 +361,13 @@ class Exercise:
         If set with type LOAD_DROP (TODO change it) found in sets_done then
         set it's weight to first weighted set before it.
         """
-        for i, s in enumerate(self.sets_done):
-            if s.type != SetType.LOAD_DROP:
+        for i, set_done in enumerate(self.sets_done):
+            if set_done.type != SetType.LOAD_DROP:
                 continue
             if self.sets_done[i - 1].type != SetType.WEIGHT:
                 continue
-            self.sets_done[i] = self.Set(SetType.WEIGHT, s.reps,
-                                         self.sets_done[i - 1].weight, s.rpe)
+            self.sets_done[i] = self.Set(SetType.WEIGHT, set_done.reps,
+                                         self.sets_done[i - 1].weight, set_done.rpe)
 
     def volume_planned(self):
         """
@@ -386,7 +380,7 @@ class Exercise:
                 base_percentage = None
             elif s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
                 continue  # skip normal volume for now, just do relative vol from RPE
-                vol += s.reps * s.weight.value
+                # vol += s.reps * s.weight.value
             elif s.reps and s.rpe:
                 vol += get_percentage(s.reps, s.rpe) * s.reps
             elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
@@ -402,25 +396,28 @@ class Exercise:
     def inol_planned(self):
         inol = 0.0
         base_percentage = None
-        for (i, s) in enumerate(self.sets_planned):
-            if base_percentage and s.weight.unit != WeightUnit.PERCENT_TOPSET:
+        for (i, set_planned) in enumerate(self.sets_planned):
+            if base_percentage and set_planned.weight.unit != WeightUnit.PERCENT_TOPSET:
                 base_percentage = None
-            elif s.reps and s.weight.unit in (WeightUnit.KG, WeightUnit.LBS):
-                continue  # skip normal volume for now, just do relative vol from RPE
-            elif s.reps and s.rpe:
-                inol += calculate_inol(s.reps, get_percentage(s.reps, s.rpe))
-            elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
+            elif set_planned.reps and set_planned.weight.unit in (WeightUnit.KG,
+                                                                  WeightUnit.LBS):
+                continue    # skip normal volume for now, just do relative vol from RPE
+            elif set_planned.reps and set_planned.rpe:
+                inol += calculate_inol(
+                    set_planned.reps, get_percentage(set_planned.reps, set_planned.rpe))
+            elif set_planned.weight.unit == WeightUnit.PERCENT_TOPSET:
                 if base_percentage is None:
                     base_percentage = get_percentage(self.sets_planned[i - 1].reps,
                                                      self.sets_planned[i - 1].rpe)
-                if s.reps and s.rpe:
-                    inol += calculate_inol(s.reps, base_percentage * s.weight.value)
+                if set_planned.reps and set_planned.rpe:
+                    inol += calculate_inol(set_planned.reps,
+                                           base_percentage * set_planned.weight.value)
 
         return round(inol, 2)
 
     # def volume_done_relative(self):
-    #     # TODO remove as unnecessary? (just divide vol by e1RM)
-    #     if not self.e1RM:
+    #     # TODO remove as unnecessary? (just divide vol by e1rm)
+    #     if not self.e1rm:
     #         return 0
     #     vol = 0.0
     #     for s in self.sets_done:
@@ -460,19 +457,19 @@ class Exercise:
             for s in self.sets_planned
         ]
 
-        e1RM = f'|{Fore.MAGENTA} e1RM: {self.e1RM}{Fore.RESET}' if self.e1RM else ''
+        e1rm = f'|{Fore.MAGENTA} e1rm: {self.e1rm}{Fore.RESET}' if self.e1rm else ''
         vol_planned = (f'|{Fore.GREEN} vol_p: '
                        f'{self.vol_planned}%{Fore.RESET}') if self.vol_planned else ''
         vol_done = (f'|{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
                     if self.vol_done else '')
         vol_done_relative = (
-            f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1RM, 1)}%{Fore.RESET}'
-            if self.vol_done and self.e1RM else '')
+            f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
+            if self.vol_done and self.e1rm else '')
         inol = f'|{Fore.CYAN} inol: {self.inol}{Fore.RESET}|' if self.inol else ''
         ret = (
             f'{Fore.RED}{self.name}{inol}{Fore.RESET}: '
             f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
-            f'{" ".join(sets_done)} {e1RM} {vol_planned} {vol_done} {vol_done_relative}'
+            f'{" ".join(sets_done)} {e1rm} {vol_planned} {vol_done} {vol_done_relative}'
         )
         if self._next_parallel_exercise:
             return ret + str(self._next_parallel_exercise)
@@ -487,8 +484,8 @@ class Session:
 
     def __str__(self):
         ret = f"{Back.BLUE}Session from {self.date}{Back.RESET}\n"
-        for e in self.exercises:
-            ret += str(e)
+        for exercise in self.exercises:
+            ret += str(exercise)
         return ret + "\n"
 
 
@@ -499,8 +496,8 @@ class Microcycle:
 
     def __str__(self):
         ret = f"{Back.GREEN}Microcycle: {Back.RESET}\n"
-        for s in self.sessions:
-            ret += str(s)
+        for session in self.sessions:
+            ret += str(session)
         return ret + "\n"
 
 
@@ -511,8 +508,8 @@ class Mesocycle:
 
     def __str__(self):
         ret = f"{Fore.BLACK}{Back.YELLOW}Mesocycle: {Back.RESET}{Fore.RESET}\n"
-        for m in self.microcycles:
-            ret += str(m)
+        for microcycle in self.microcycles:
+            ret += str(microcycle)
         return ret + "\n"
 
 
@@ -530,21 +527,23 @@ def get_session(planned_cells, done_cells):
     return Session(exercises, date)
 
 
-def get_microcycles(weeks_split):
+def get_microcycles(weeks_split: List[gspread.Cell]) -> List[Microcycle]:
     micros = []
     pattern = re.compile("^[DdSs][0-9]+")  # Ignore GPP column for now
-    # breakpoint()
-    for c in weeks_split:
+    for session_cells in weeks_split:
         sessions = []
-        sessions_row = [e for e in c if e.row == c[0].row]
+        sessions_row = (cell for cell in session_cells
+                        if cell.row == session_cells[0].row)
         logger.debug(sessions_row)
-        for x in sessions_row:
-            if re.match(pattern, x.value):
+        for session_cell in sessions_row:
+            if re.match(pattern, session_cell.value):
                 planned_cells = [
-                    i for i in c if i.col == x.col and i.row >= x.row
+                    cell for cell in session_cells
+                    if cell.col == session_cell.col and cell.row >= session_cell.row
                 ]
                 done_cells = [
-                    i for i in c if i.col == x.col + 1 and i.row >= x.row
+                    cell for cell in session_cells
+                    if cell.col == session_cell.col + 1 and cell.row >= session_cell.row
                 ]
                 session = get_session(planned_cells, done_cells)
                 sessions.append(session)
@@ -552,28 +551,24 @@ def get_microcycles(weeks_split):
     return micros
 
 
-def get_mesocycle(block, last_row):
-    pattern = re.compile("^[WwMm][0-9]+")
-    # for i, b in enumerate(blocks):
-    micro_a1 = (gspread.utils.rowcol_to_a1(block.row, block.col) + ":" +
-                gspread.utils.rowcol_to_a1(last_row, G_WIDTH))
-    meso_range = wksh.range(micro_a1)
-    # logger.debug(meso_range)
-    # That code sucks, but works. Done for the need of api usage optimization
-    W_row = 0
-    weeks_split = []
-    # why TF block iterator is here
-    for i, c in enumerate(meso_range):
-        if re.match(pattern, c.value):
-            if W_row:  # If we find a row with W[0-9]
-                weeks_split.append(
-                    meso_range[W_row:i - 1]
-                )  # Save microcycles from former week row to row before current
-            W_row = i
-        if i == len(meso_range) - 1 and W_row:  # If we reach the end of sheet
-            weeks_split.append(meso_range[W_row:i - 1])
-    # logger.debug(weeks_split)
-    micros = get_microcycles(weeks_split)
+def get_mesocycle(mesocycle_start: gspread.Cell, mesocycle_last_row: int) -> Mesocycle:
+    microcycle_pattern = re.compile("^[WwMm][0-9]+")
+    micro_a1 = (gspread.utils.rowcol_to_a1(mesocycle_start.row, mesocycle_start.col) +
+                ":" + gspread.utils.rowcol_to_a1(mesocycle_last_row, G_WIDTH))
+    meso_cell_range: List[gspread.Cell] = wksh.range(micro_a1)
+    microcycle_row = 0
+    microcycles_split = []
+    for i, cell in enumerate(meso_cell_range):
+        if re.match(microcycle_pattern, cell.value):
+            if microcycle_row:    # If we find a row with W[0-9]
+                microcycles_split.append(
+                    meso_cell_range[microcycle_row:i - 1]
+                )    # Save microcycles from former week row to row before current
+            microcycle_row = i
+        if i == len(meso_cell_range
+                    ) - 1 and microcycle_row:    # If we reach the end of sheet
+            microcycles_split.append(meso_cell_range[microcycle_row:i - 1])
+    micros = get_microcycles(microcycles_split)
     return Mesocycle(micros)
 
 
@@ -596,6 +591,5 @@ if __name__ == "__main__":
         # level
         last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
-    # breakpoint()
     for m in mesocycles:
         print(m)
