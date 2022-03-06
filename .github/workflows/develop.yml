@@ -1,4 +1,4 @@
-name: Dev GA test
+name: Static code analysis
 on:
   push:
     branches:
@@ -14,21 +14,19 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+
       - name: Initialize envrionment
         run: |
-          sudo apt update && sudo apt install python3.9 python3.9-venv -y
-          python3.9 -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - run: source venv/bin/activate && python tests/utils.py
-      - run: source venv/bin/activate && python tests/exercise.py
+      - run: python tests/utils.py
+      - run: python tests/exercise.py
       - name: Run safety check
         run: |
-          source venv/bin/activate
-          which python
-          pwd
-          ls
           safety check
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python@master
