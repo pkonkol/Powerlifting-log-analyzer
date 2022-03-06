@@ -15,6 +15,7 @@ and easily write trainings logs abundant in information.
     (Just a random mesocycle of my training, not the greatest one)
 3. Run
 ```
+pip install -r requirements.txt
 python main.py
 ```
 ### Example output:
@@ -25,6 +26,10 @@ python main.py
 python tests/exercise.py
 python tests/utils.py
 ```
+
+## development
+- Use flake8
+- Use pre-commit hooks `pre-commit install`
 
 ### Exercise syntax
 ```

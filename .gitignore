@@ -5,3 +5,4 @@ venv*/
 *.pyc
 pla.log
 *.json
+!datasets.json
