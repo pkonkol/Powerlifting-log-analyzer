@@ -1,3 +1,4 @@
+import argparse
 import logging
 import re
 from collections import namedtuple
@@ -10,6 +11,12 @@ from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
 from utils import calculate_e1rm, calculate_inol, get_percentage
+
+parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
+parser.add_argument('--spreadsheet', action='store', type=str,
+                    help='Your google spreadsheet\'s name')
+parser.add_argument('--worksheet', action='store', type=str,
+                    help='The tab in the spreasheet')
 
 colorama.init()
 
@@ -573,12 +580,12 @@ def get_mesocycle(mesocycle_start: gspread.Cell, mesocycle_last_row: int) -> Mes
 
 
 if __name__ == "__main__":
+    args = parser.parse_args()
     gc = gspread.oauth(credentials_filename="secret.json", )
-    # sh = gc.open("backup 13.02 Trening 2021-2022")
-    sh = gc.open("Trening 2021-2022")
 
+    sh = gc.open(args.spreadsheet)
     print(sh.worksheets())
-    wksh = sh.worksheet("IDL 2022.02 prep 09.2021-02.2022")
+    wksh = sh.worksheet(args.worksheet)
     G_WIDTH = len(wksh.get_all_values()[0]) + 1
     G_HEIGHT = len(wksh.get_all_values()) + 1
 
