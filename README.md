@@ -132,5 +132,3 @@ Sets done column scheme | Example | Description
 | . |
 | . |
 | `Mesocycle_end:` | `<date_end>`
-
-

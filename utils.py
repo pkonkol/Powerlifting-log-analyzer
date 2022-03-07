@@ -39,7 +39,7 @@ def calculate_e1rm(weight, reps, rpe_str):
                  3)
 
 
-def get_percentage(reps: float, rpe: str):
+def get_percentage(reps: float, rpe: float):
     if not(reps and rpe >= 6.0):
         return 0
     return DATA['rpe_percentage_chart'][str(rpe)][int(reps - 1)]

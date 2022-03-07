@@ -23,7 +23,7 @@ logger.info("Starting tests/exercise.py")
 
 
 class SetsDoneParsing(unittest.TestCase):
-    correct_results = (
+    correct_results: tuple = (
         ('200@9', [Set(ST.WEIGHT, None, Weight(200, DU), 9)]),
         ('200kg@9.3', [Set(ST.WEIGHT, None, Weight(200, WU.KG), 9.3)]),
         ('200lbs@9.6', [Set(ST.WEIGHT, None, Weight(200, WU.LBS), 9.6)]),
