@@ -416,7 +416,7 @@ class Exercise:
                 if base_percentage is None:
                     base_percentage = get_percentage(self.sets_planned[i - 1].reps,
                                                      self.sets_planned[i - 1].rpe)
-                if set_planned.reps and set_planned.rpe:
+                if set_planned.reps:
                     inol += calculate_inol(set_planned.reps,
                                            base_percentage * set_planned.weight.value)
 
