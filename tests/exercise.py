@@ -227,6 +227,10 @@ class ExerciseNameParsing(unittest.TestCase):
                 )
 
 
+class CalculatingInol(unittest.TestCase):
+    pass
+
+
 class ExerciseInit(unittest.TestCase):
     # TODO check if complete class instance initializes correctly
     # Also may split it in tests for specific class init elements

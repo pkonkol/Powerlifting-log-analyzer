@@ -10,7 +10,8 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import calculate_e1rm, calculate_inol, get_percentage
+from utils import (calculate_e1rm, calculate_inol, get_percentage,
+                   get_stress_index)
 
 parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
 parser.add_argument('--spreadsheet', action='store', type=str,
@@ -54,6 +55,7 @@ class Exercise:
         self._workout_from_string(planned_str, done_str)
         self.notes = notes
 
+        self.stress_index_done = self.get_stress_index_done()
         self.inol = self.inol_planned()
         self.vol_planned = self.volume_planned()
 
@@ -418,8 +420,19 @@ class Exercise:
                 if set_planned.reps:
                     inol += calculate_inol(set_planned.reps,
                                            base_percentage * set_planned.weight.value)
-
         return round(inol, 2)
+
+    # def get_stress_index_planned(self):
+    #     stress_index = 0
+    #     for (i, set_planned) in enumerate(self.sets_planned):
+    #         stress_index += 0
+    #     return stress_index
+
+    def get_stress_index_done(self):
+        si = 0.0
+        for s in self.sets_done:
+            si += get_stress_index(s.rpe)
+        return si
 
     # def volume_done_relative(self):
     #     # TODO remove as unnecessary? (just divide vol by e1rm)
@@ -472,10 +485,12 @@ class Exercise:
             f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
             if self.vol_done and self.e1rm else '')
         inol = f'|{Fore.CYAN} inol: {self.inol}{Fore.RESET}|' if self.inol else ''
+        si = (f'|{Fore.YELLOW} SI: {round(self.stress_index_done, 1)}{Fore.RESET}|'
+              if self.stress_index_done else '')
         ret = (
-            f'{Fore.RED}{self.name}{inol}{Fore.RESET}: '
+            f'{Fore.RED}{self.name}{inol}{vol_planned}{Fore.RESET}: '
             f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
-            f'{" ".join(sets_done)} {e1rm} {vol_planned} {vol_done} {vol_done_relative}'
+            f'{" ".join(sets_done)} {e1rm} {vol_done} {vol_done_relative} {si}'
         )
         if self._next_parallel_exercise:
             return ret + str(self._next_parallel_exercise)

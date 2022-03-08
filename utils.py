@@ -49,6 +49,26 @@ def calculate_inol(reps, intensity):
     return reps / (100.01 - intensity)
 
 
+def get_stress_index(rpe: float):
+    # rpe_to_si = {
+    # }
+    match rpe:
+        case 5:
+            return 0.1
+        case 5.5 | 6:
+            return 0.5
+        case 6.5 | 7:
+            return 0.667
+        case 7.5 | 8:
+            return 0.8
+        case 8.5 | 9:
+            return 1
+        case 9.3 | 9.5 | 9.6 | 10:
+            return 1.333
+        case _:
+            return 0
+
+
 # def calculate_plate_order(available_plates: Counter, bar_weight: float,
 #                          goal_weight: float) -> tuple:
 #    # TODO
