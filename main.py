@@ -391,13 +391,12 @@ class Exercise:
             elif s.reps and s.rpe:
                 vol += get_percentage(s.reps, s.rpe) * s.reps
             elif s.weight.unit == WeightUnit.PERCENT_TOPSET:
-                if base_percentage is not None:
+                if base_percentage is None:
                     base_percentage = get_percentage(
                         self.sets_planned[i - 1].reps,
                         self.sets_planned[i - 1].rpe)
-                if s.reps and s.rpe:
+                if s.reps and s.weight.value:
                     vol += base_percentage * s.weight.value * s.reps
-
         return round(vol, 1)
 
     def inol_planned(self):
