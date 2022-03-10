@@ -10,8 +10,8 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import (calculate_e1rm, calculate_inol, get_old_stress_index,
-                   get_percentage, get_stress_index)
+from utils import (calculate_e1rm, calculate_inol, get_percentage,
+                   get_stress_index)
 
 parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
 parser.add_argument('--spreadsheet', action='store', type=str,
@@ -422,18 +422,6 @@ class Exercise:
                                            base_percentage * set_planned.weight.value)
         return round(inol, 2)
 
-    # def get_stress_index_planned(self):
-    #     stress_index = 0
-    #     for (i, set_planned) in enumerate(self.sets_planned):
-    #         stress_index += 0
-    #     return stress_index
-
-    def get_old_stress_index_done(self):
-        si = 0.0
-        for s in self.sets_done:
-            si += get_old_stress_index(s.rpe)
-        return si
-
     def get_stress_index_done(self):
         cs = ps = ts = 0.0
         for s in self.sets_done:
@@ -444,14 +432,6 @@ class Exercise:
             ps += tmp_ps
             ts += tmp_ts
         return {'cs': cs, 'ps': ps, 'ts': ts}
-
-    # def volume_done_relative(self):
-    #     # TODO remove as unnecessary? (just divide vol by e1rm)
-    #     if not self.e1rm:
-    #         return 0
-    #     vol = 0.0
-    #     for s in self.sets_done:
-    #         pass
 
     def volume_done(self):
         vol = 0.0
@@ -487,22 +467,22 @@ class Exercise:
             for s in self.sets_planned
         ]
 
-        e1rm = f' {Fore.MAGENTA} e1rm: {self.e1rm}{Fore.RESET}' if self.e1rm else ''
-        vol_planned = (f' {Fore.GREEN} vol_p: '
+        e1rm = f'{Fore.MAGENTA} e1rm: {self.e1rm}{Fore.RESET}' if self.e1rm else ''
+        vol_planned = (f'{Fore.GREEN} vol_p: '
                        f'{self.vol_planned}%{Fore.RESET}') if self.vol_planned else ''
-        vol_done = (f' {Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
+        vol_done = (f'{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
                     if self.vol_done else '')
         vol_done_relative = (
             f' {Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
             if self.vol_done and self.e1rm else '')
-        inol = f' {Fore.CYAN} inol: {self.inol}{Fore.RESET}' if self.inol else ''
-        si = (f' {Fore.YELLOW} SI:(CS: {round(self.stress_index_done["cs"], 1)} '
+        inol = f'{Fore.CYAN} inol: {self.inol}{Fore.RESET}' if self.inol else ''
+        si = (f'{Fore.YELLOW} CS: {round(self.stress_index_done["cs"], 1)} '
               f'PS: {round(self.stress_index_done["ps"], 1)} '
-              f'TS: {round(self.stress_index_done["ts"], 1)}){Fore.RESET}'
+              f'TS: {round(self.stress_index_done["ts"], 1)}{Fore.RESET}'
               if self.stress_index_done['ts'] != 0.0 else '')
         ret = (
-            f'{Fore.RED}{self.name}{inol}{vol_planned}'
-            f'{e1rm}{vol_done}{vol_done_relative}{si}{Fore.RESET} \n'
+            f'{Fore.RED}{self.name}{Fore.RESET} | p:{inol}{vol_planned} '
+            f'd:{e1rm}{vol_done}{vol_done_relative}{si}\n'
             f'\t\t{" ".join(sets_planned)} {Back.LIGHTBLUE_EX}=>{Back.RESET} '
             f'{" ".join(sets_done)} '
         )
@@ -532,10 +512,31 @@ class Microcycle:
         self.name = name
 
     def __str__(self):
-        ret = f"{Back.GREEN}Microcycle: {self.name}{Back.RESET}\n"
+        e = self._get_exercise_analysis()
+        exercise_analysis_str = '\n\t'.join(f'{k:<20}' + str(v) for k, v in e.items())
+        ret = (f"{Back.GREEN}Microcycle: {self.name}\n"
+               f"Summary:\n\t{exercise_analysis_str}{Back.RESET}\n")
         for session in self.sessions:
             ret += str(session)
         return ret + "\n"
+
+    def _get_exercise_analysis(self):
+        ret = {}
+        for s in self.sessions:
+            for e in s.exercises:
+                if e.name not in ret.keys():
+                    if not e.inol and not e.stress_index_done['cs']:
+                        continue
+                    ret[e.name] = {'inol': 0.0, 'cs': 0.0, 'ps': 0.0, 'ts': 0.0}
+                ret[e.name]['inol'] += e.inol
+                ret[e.name]['cs'] += e.stress_index_done['cs']
+                ret[e.name]['ps'] += e.stress_index_done['ps']
+                ret[e.name]['ts'] += e.stress_index_done['ts']
+        for e in ret:
+            for k in ret[e]:
+                ret[e][k] = round(ret[e][k], 1)
+
+        return ret
 
 
 class Mesocycle:
@@ -630,5 +631,8 @@ if __name__ == "__main__":
         # level
         last_row = blocks[i + 1].row - 1 if i + 1 < len(blocks) else G_HEIGHT - 1
         mesocycles.append(get_mesocycle(block, last_row))
-    for m in mesocycles:
-        print(m)
+    with open('output', 'w') as f:
+        for m in mesocycles:
+            s = str(m)
+            print(s)
+            f.write(s)
