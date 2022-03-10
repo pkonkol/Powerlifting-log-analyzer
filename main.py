@@ -513,12 +513,13 @@ class Exercise:
 
 class Session:
 
-    def __init__(self, exercises: List[Exercise], date: str):
+    def __init__(self, exercises: List[Exercise], date: str, name: str):
         self.exercises = exercises
         self.date = date
+        self.name = name
 
     def __str__(self):
-        ret = f"{Back.BLUE}Session from {self.date}{Back.RESET}\n"
+        ret = f"{Back.BLUE}Session {self.name} from {self.date}{Back.RESET}\n"
         for exercise in self.exercises:
             ret += str(exercise)
         return ret + "\n"
@@ -526,11 +527,12 @@ class Session:
 
 class Microcycle:
 
-    def __init__(self, sessions: List[Session]):
+    def __init__(self, sessions: List[Session], name):
         self.sessions = sessions
+        self.name = name
 
     def __str__(self):
-        ret = f"{Back.GREEN}Microcycle: {Back.RESET}\n"
+        ret = f"{Back.GREEN}Microcycle: {self.name}{Back.RESET}\n"
         for session in self.sessions:
             ret += str(session)
         return ret + "\n"
@@ -538,11 +540,13 @@ class Microcycle:
 
 class Mesocycle:
 
-    def __init__(self, microcycles: List[Microcycle]):
+    def __init__(self, microcycles: List[Microcycle], name):
         self.microcycles = microcycles
+        self.name = name
 
     def __str__(self):
-        ret = f"{Fore.BLACK}{Back.YELLOW}Mesocycle: {Back.RESET}{Fore.RESET}\n"
+        ret = (f"{Fore.BLACK}{Back.YELLOW}Mesocycle: {self.name}"
+               f"{Back.RESET}{Fore.RESET}\n")
         for microcycle in self.microcycles:
             ret += str(microcycle)
         return ret + "\n"
@@ -559,7 +563,7 @@ def get_session(planned_cells, done_cells):
             continue
         exercises.append(get_exercise(p, d))
     date = done_cells[0].value
-    return Session(exercises, date)
+    return Session(exercises, date, planned_cells[0].value)
 
 
 def get_microcycles(weeks_split: List[gspread.Cell]) -> List[Microcycle]:
@@ -582,7 +586,7 @@ def get_microcycles(weeks_split: List[gspread.Cell]) -> List[Microcycle]:
                 ]
                 session = get_session(planned_cells, done_cells)
                 sessions.append(session)
-        micros.append(Microcycle(sessions))
+        micros.append(Microcycle(sessions, session_cells[0].value))
     return micros
 
 
@@ -604,7 +608,7 @@ def get_mesocycle(mesocycle_start: gspread.Cell, mesocycle_last_row: int) -> Mes
                     ) - 1 and microcycle_row:    # If we reach the end of sheet
             microcycles_split.append(meso_cell_range[microcycle_row:i - 1])
     micros = get_microcycles(microcycles_split)
-    return Mesocycle(micros)
+    return Mesocycle(micros, mesocycle_start.value)
 
 
 if __name__ == "__main__":
