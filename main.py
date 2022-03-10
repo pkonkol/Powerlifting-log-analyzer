@@ -10,8 +10,8 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import (calculate_e1rm, calculate_inol, get_percentage,
-                   get_stress_index)
+from utils import (calculate_e1rm, calculate_inol, get_old_stress_index,
+                   get_percentage, get_stress_index)
 
 parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
 parser.add_argument('--spreadsheet', action='store', type=str,
@@ -428,11 +428,22 @@ class Exercise:
     #         stress_index += 0
     #     return stress_index
 
-    def get_stress_index_done(self):
+    def get_old_stress_index_done(self):
         si = 0.0
         for s in self.sets_done:
-            si += get_stress_index(s.rpe)
+            si += get_old_stress_index(s.rpe)
         return si
+
+    def get_stress_index_done(self):
+        cs = ps = ts = 0.0
+        for s in self.sets_done:
+            if not s.rpe or not s.reps:
+                continue
+            tmp_cs, tmp_ps, tmp_ts = get_stress_index(s.rpe, s.reps)
+            cs += tmp_cs
+            ps += tmp_ps
+            ts += tmp_ts
+        return {'cs': cs, 'ps': ps, 'ts': ts}
 
     # def volume_done_relative(self):
     #     # TODO remove as unnecessary? (just divide vol by e1rm)
@@ -476,21 +487,24 @@ class Exercise:
             for s in self.sets_planned
         ]
 
-        e1rm = f'|{Fore.MAGENTA} e1rm: {self.e1rm}{Fore.RESET}' if self.e1rm else ''
-        vol_planned = (f'|{Fore.GREEN} vol_p: '
+        e1rm = f' {Fore.MAGENTA} e1rm: {self.e1rm}{Fore.RESET}' if self.e1rm else ''
+        vol_planned = (f' {Fore.GREEN} vol_p: '
                        f'{self.vol_planned}%{Fore.RESET}') if self.vol_planned else ''
-        vol_done = (f'|{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
+        vol_done = (f' {Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
                     if self.vol_done else '')
         vol_done_relative = (
-            f'|{Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
+            f' {Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
             if self.vol_done and self.e1rm else '')
-        inol = f'|{Fore.CYAN} inol: {self.inol}{Fore.RESET}|' if self.inol else ''
-        si = (f'|{Fore.YELLOW} SI: {round(self.stress_index_done, 1)}{Fore.RESET}|'
-              if self.stress_index_done else '')
+        inol = f' {Fore.CYAN} inol: {self.inol}{Fore.RESET}' if self.inol else ''
+        si = (f' {Fore.YELLOW} SI:(CS: {round(self.stress_index_done["cs"], 1)} '
+              f'PS: {round(self.stress_index_done["ps"], 1)} '
+              f'TS: {round(self.stress_index_done["ts"], 1)}){Fore.RESET}'
+              if self.stress_index_done['ts'] != 0.0 else '')
         ret = (
-            f'{Fore.RED}{self.name}{inol}{vol_planned}{Fore.RESET}: '
-            f'{" ".join(sets_planned)} {Back.BLUE}|{Back.RESET} '
-            f'{" ".join(sets_done)} {e1rm} {vol_done} {vol_done_relative} {si}'
+            f'{Fore.RED}{self.name}{inol}{vol_planned}'
+            f'{e1rm}{vol_done}{vol_done_relative}{si}{Fore.RESET} \n'
+            f'\t\t{" ".join(sets_planned)} {Back.LIGHTBLUE_EX}=>{Back.RESET} '
+            f'{" ".join(sets_done)} '
         )
         if self._next_parallel_exercise:
             return ret + str(self._next_parallel_exercise)

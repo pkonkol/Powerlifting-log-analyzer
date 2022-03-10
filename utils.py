@@ -35,12 +35,16 @@ def calculate_e1rm(weight, reps, rpe_str):
     rpe = 10.0 if rpe_str is None else rpe_str
     if not(weight and reps and rpe >= 6.0):
         return 0
+    if reps > 12:
+        return 0
     return round(100 * weight / DATA['rpe_percentage_chart'][str(rpe)][int(reps - 1)],
                  3)
 
 
 def get_percentage(reps: float, rpe: float):
     if not(reps and rpe >= 6.0):
+        return 0
+    if reps > 12:
         return 0
     return DATA['rpe_percentage_chart'][str(rpe)][int(reps - 1)]
 
@@ -49,7 +53,13 @@ def calculate_inol(reps, intensity):
     return reps / (100.01 - intensity)
 
 
-def get_stress_index(rpe: float):
+def get_stress_index(rpe: float, reps: int) -> tuple[float, float, float]:
+    return(DATA['cs'][str(rpe)][min(int(reps - 1), 14)],
+           DATA['ps'][str(rpe)][min(int(reps - 1), 14)],
+           DATA['ts'][str(rpe)][min(int(reps - 1), 14)])
+
+
+def get_old_stress_index(rpe: float) -> float:
     # rpe_to_si = {
     # }
     match rpe:
@@ -66,7 +76,7 @@ def get_stress_index(rpe: float):
         case 9.3 | 9.5 | 9.6 | 10:
             return 1.333
         case _:
-            return 0
+            return 0.0
 
 
 # def calculate_plate_order(available_plates: Counter, bar_weight: float,
