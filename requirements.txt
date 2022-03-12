@@ -1,3 +1,6 @@
 gspread==5.1.1
-yapf
-colorama
+colorama==0.4.4
+yapf==0.32.0
+pre-commit==2.17.0
+flake8==4.0.1
+safety==1.10.3

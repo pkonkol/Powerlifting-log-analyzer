@@ -1,14 +1,14 @@
-import os, sys, inspect
-from tkinter.messagebox import NO
+import inspect
+import logging
+import os
+import pprint
+import sys
+import unittest
 
 currentdir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
+sys.path.insert(0, os.path.dirname(currentdir))
 
-import unittest
-import logging
-import pprint
 from main import Exercise, WeightUnit
 from schemes import SetType
 
@@ -23,7 +23,7 @@ logger.info("Starting tests/exercise.py")
 
 
 class SetsDoneParsing(unittest.TestCase):
-    correct_results = (
+    correct_results: tuple = (
         ('200@9', [Set(ST.WEIGHT, None, Weight(200, DU), 9)]),
         ('200kg@9.3', [Set(ST.WEIGHT, None, Weight(200, WU.KG), 9.3)]),
         ('200lbs@9.6', [Set(ST.WEIGHT, None, Weight(200, WU.LBS), 9.6)]),
@@ -45,18 +45,12 @@ class SetsDoneParsing(unittest.TestCase):
             Set(ST.WEIGHT, 10, Weight(20, WU.KG), None),
             Set(ST.WEIGHT, 10, Weight(20, WU.KG), None)
         ]),
-        ('2x12@15kg', [
-            Set(ST.WEIGHT, 12, Weight(15, WU.KG), None),
-            Set(ST.WEIGHT, 12, Weight(15, WU.KG), None)
-        ]),
         ('2x8x30kg', [
             Set(ST.WEIGHT, 8, Weight(30, WU.KG), None),
             Set(ST.WEIGHT, 8, Weight(30, WU.KG), None)
         ]),
         ('X', []),
         ('V', [Set(ST.DONE_ALL, None, Weight(None, None), None)]),
-        #TODO
-        # 'vvvv vvvv'
         ('vvvv vvvv',
          [Set(ST.DONE, None, Weight(None, None), None) for _ in range(8)]),
         ('vv',
@@ -65,7 +59,7 @@ class SetsDoneParsing(unittest.TestCase):
          [Set(ST.DONE, None, Weight(None, None), None) for _ in range(10)]),
         ('40kgXvvvv',
          [Set(ST.WEIGHT, None, Weight(40, WU.KG), None)
-          for _ in range(4)]),  #maybe change the X to eg. 40kg=vvvv
+          for _ in range(4)]),  # maybe change the X to eg. 40kg=vvvv
         ('5,3@BW', [
             Set(ST.WEIGHT, 5, Weight(None, WU.BW), None),
             Set(ST.WEIGHT, 3, Weight(None, WU.BW), None)
@@ -102,7 +96,7 @@ class SetsDoneParsing(unittest.TestCase):
     )
 
     def test_simple_sets_done_from_string(self):
-        logger.info("Starting tests_sets_done_from_string" + "-" * 30)
+        logger.info(f"Starting tests_sets_done_from_string {'-'*30}")
         e = Exercise
         e.__init__ = lambda x: None
         e = e()
@@ -114,12 +108,13 @@ class SetsDoneParsing(unittest.TestCase):
                 self.assertEqual(
                     result,
                     output_dict,
-                    msg=
-                    f'Failed done for {sets_str} with---------\n{pprint.pformat(result)}\n CORRECT---------\n{pprint.pformat(output_dict)}'
+                    msg=(f'Failed done for {sets_str} with{"-"*10}\n'
+                         f'{pprint.pformat(result)}\n CORRECT{"-"*10}\n'
+                         f'{pprint.pformat(output_dict)}')
                 )
 
     def test_complex_sets_done_from_string(self):
-        logger.info("Starting tests_sets_done_from_string" + "-" * 30)
+        logger.info(f"Starting tests_sets_done_from_string {'-'*30}")
         e = Exercise
         e.__init__ = lambda x: None
         e = e()
@@ -131,13 +126,14 @@ class SetsDoneParsing(unittest.TestCase):
                 self.assertEqual(
                     result,
                     output_dict,
-                    msg=
-                    f'Failed done for {sets_str} with---------\n{pprint.pformat(result)}\n CORRECT---------\n{pprint.pformat(output_dict)}'
+                    msg=(f'Failed done for {sets_str} with{"-"*10}\n'
+                         f'{pprint.pformat(result)}\n CORRECT{"-"*10}\n'
+                         f'{pprint.pformat(output_dict)}')
                 )
 
 
 class SetsPlannedParsing(unittest.TestCase):
-    #Set =  self.Set #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
+    # Set =  self.Set #namedtuple('Set', ('type', 'reps', 'weight', 'rpe'))
     correct_results = (
         ('x8@9.3', [Set(ST.RPE, 8, Weight(None, None), 9.3)]),
         ('2x5V80%', [
@@ -187,7 +183,7 @@ class SetsPlannedParsing(unittest.TestCase):
     )
 
     def test_sets_planned_from_string(self):
-        logger.info("Starting tests_sets_planned_from_string" + "-" * 30)
+        logger.info(f"Starting tests_sets_planned_from_string {'-'*30}")
         e = Exercise
         e.__init__ = lambda x: None
         e = e()
@@ -199,16 +195,22 @@ class SetsPlannedParsing(unittest.TestCase):
                 self.assertEqual(
                     result,
                     output_dict,
-                    msg=
-                    f'Failed planned for {sets_str} with--------\n {result},\n CORRECT--------\n {output_dict}'
+                    msg=(f'Failed done for {sets_str} with{"-"*10}\n'
+                         f'{pprint.pformat(result)}\n CORRECT{"-"*10}\n'
+                         f'{pprint.pformat(output_dict)}')
                 )
 
 
 class ExerciseNameParsing(unittest.TestCase):
-    correct_results = (('SQ w/wraps', ('SQ', [['wraps'], [], [], []])), )
+    correct_results = (('SQ w/wraps', ('SQ', {
+        'with': ['wraps'],
+        'pattern': [],
+        'tempo': [],
+        'without': []
+    })), )
 
     def test_exercise_name_parsing(self):
-        logger.info("Starting tests_exercise_from_string" + "-" * 30)
+        logger.info(f"Starting tests_exercise_from_string {'-'*30}")
         e = Exercise
         e.__init__ = lambda x: None
         e = e()
@@ -220,9 +222,14 @@ class ExerciseNameParsing(unittest.TestCase):
                 self.assertEqual(
                     result,
                     output,
-                    msg=
-                    f'Failed exercise for {exercise_str} with--------\n {result},\n CORRECT--------\n {output}'
+                    msg=(f'Failed done for {exercise_str} with{"-"*10}\n'
+                         f'{pprint.pformat(result)}\n CORRECT{"-"*10}\n'
+                         f'{pprint.pformat(output)}')
                 )
+
+
+class CalculatingInol(unittest.TestCase):
+    pass
 
 
 class ExerciseInit(unittest.TestCase):
@@ -250,7 +257,7 @@ class ExerciseInit(unittest.TestCase):
         pass
 
     def test_exercise_init_with_correct_values(self):
-        logger.info("Starting exercise_init_with_correct_values" + "-" * 30)
+        logger.info(f"Starting exercise_init_with_correct_values {'-'*30}")
         for strs, correct_dict in self.cases:
             with self.subTest(
                     msg=f'exercise_init for {strs["planned"]}:{strs["done"]}'):
@@ -263,6 +270,6 @@ class ExerciseInit(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main(verbosity=2)
 
-#set struct
+# set struct
 # ({'reps': <int> , 'type': <str>, 'weight': <float>, 'RPE': <float>}, ...)
 # Set =  namedtuple('Set', ('type', 'reps, 'weight', 'rpe'))
