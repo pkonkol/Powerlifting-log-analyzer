@@ -16,6 +16,21 @@
         "without":{},
         "tempo":{}
     },
+    "exercise_aliases": [
+          ["Squat", "SQ"],
+          ["Comp SQ", "SQ p/comp"],
+          ["Paused SQ", "SQ p/paused"],
+          ["Speed SQ", "SQ p/speed"],
+          ["SSB SQ", "SQ w/ssb"],
+          ["Bench", "BP"],
+          ["Comp BP", "BP p/comp"],
+          ["Paused BP", "BP p/paused"],
+          ["Speed BP", "BP p/speed"],
+          ["Deadlift", "DL"],
+          ["Comp DL", "DL p/comp"],
+          ["SLDL", "DL p/stiffleg"],
+          ["Seated OHP", "OHP p/comp"]
+    ],
     "exercises": {
            "SQ" : {
                 "movement_patterns": { "2" : "heavy", "8" : "medium"},

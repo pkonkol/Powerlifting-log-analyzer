@@ -69,13 +69,15 @@ SCHEMES_DONE = (
      SetType.WEIGHT),    # Multiple Weight@Rpe sets written in one string
     (re.compile(fr"^{WEIGHT_SCHEME}x{REPS_SCHEME}{RPE_MULTISET_SCHEME}$"),
      SetType.WEIGHT),    # Multiple WeightXReps@Rpe sets written in one string
-    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}(?:\/|x|@){WEIGHT_SCHEME}$"),
-     SetType.WEIGHT,),
+    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}(?:\/){WEIGHT_SCHEME}@{RPE_SCHEME}$"),
+     SetType.WEIGHT,),  # eg. 5x3/120kg@5. TODO remove?
+    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}(?:\/|x){WEIGHT_SCHEME}$"),
+     SetType.WEIGHT,),  # eg. 5x3x120kg. TODO remove?
     (re.compile(r"^ *(?P<undone>[Xx]?) *$"), SetType.DONE),    # exercise not done
     (re.compile(r"^\s*(?P<done>[V])\s*$"), SetType.DONE_ALL),    # Done, V for each set
     (re.compile(r"^\s*(?P<done>[v]+|[V]{2,})\s*$"),
      SetType.DONE),    # Done, V for each set, parse by len(?)
-    (re.compile(fr"^{WEIGHT_SCHEME}[Xx](?P<done>[Vv]+)$"),
+    (re.compile(fr"^{WEIGHT_SCHEME}[Xx:](?P<done>[Vv]+)$"),
      SetType.WEIGHT),
     # Kilograms done for as many sets as "v's" after weight
     # eg. 40kgxVVVVV, reps presumed as planned

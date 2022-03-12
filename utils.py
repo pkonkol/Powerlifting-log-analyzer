@@ -54,6 +54,8 @@ def calculate_inol(reps, intensity):
 
 
 def get_stress_index(rpe: float, reps: int) -> tuple[float, float, float]:
+    if rpe < 5.0:
+        return 0, 0, 0
     return(DATA['cs'][str(rpe)][min(int(reps - 1), 14)],
            DATA['ps'][str(rpe)][min(int(reps - 1), 14)],
            DATA['ts'][str(rpe)][min(int(reps - 1), 14)])
@@ -77,6 +79,10 @@ def get_old_stress_index(rpe: float) -> float:
             return 1.333
         case _:
             return 0.0
+
+
+def get_exercise_aliases():
+    return DATA["exercise_aliases"]
 
 
 # def calculate_plate_order(available_plates: Counter, bar_weight: float,

@@ -10,8 +10,8 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import (calculate_e1rm, calculate_inol, get_percentage,
-                   get_stress_index)
+from utils import (calculate_e1rm, calculate_inol, get_exercise_aliases,
+                   get_percentage, get_stress_index)
 
 parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
 parser.add_argument('--spreadsheet', action='store', type=str,
@@ -23,7 +23,7 @@ colorama.init()
 
 logging.basicConfig(
     filename="pla.log",
-    format="%(levelname)s:%(name)s:%(lineno)s - %(funcName)20s()  %(message)s",
+    format="%(levelname)s:%(funcName)30s():%(lineno)s  %(message)s",
     level=logging.DEBUG,
     filemode="w",
 )
@@ -39,15 +39,12 @@ class WeightUnit(Enum):
 
 
 class Exercise:
-
+    ExerciseAliases = get_exercise_aliases()
     DefaultUnit = WeightUnit.KG
     Weight = namedtuple("Weight", ("value", "unit"))
     Set = namedtuple("Set", ("type", "reps", "weight", "rpe"))
 
     def __init__(self, planned_str, done_str, notes):
-        logger.debug(SetType.RPE)
-        logger.debug(SetType)
-
         self.done = True
         self.is_superset = False  # TODO remove this if _next_parallel keeps the info
         # only problem is with last superset exercise not knowing it's in superset
@@ -69,9 +66,6 @@ class Exercise:
             # self.inol = 0
 
     def get_e1rm(self):
-        logger.debug(self.name)
-        logger.debug(self.sets_done)
-        logger.debug((ws for ws in self.sets_done))
         # TMP fix, TODO if done there are always sets (fails on superset)
         # "vvvvv" done pattern not matched correctly
         # may jus throw this away for supersets anyway, i do just easy
@@ -80,7 +74,8 @@ class Exercise:
             return 0
         e1rm = max([
             calculate_e1rm(ws.weight.value, ws.reps, ws.rpe)
-            for ws in self.sets_done if ws.weight.value and ws.reps and ws.rpe
+            for ws in self.sets_done
+            if ws.weight.value and ws.reps and ws.rpe
         ], default=0)
         return e1rm
 
@@ -136,24 +131,37 @@ class Exercise:
             self._sets_done_from_string(second_col_str))
         self._sets_done_connect_relative_weight()
 
+    def _exercise_sub_aliases(exercise: str) -> str:
+        """Change exercise aliases to exercise basename with modifier """
+        unaliased = exercise
+        for alias, final in Exercise.ExerciseAliases:
+            unaliased = re.sub(alias, final, unaliased, flags=re.IGNORECASE)
+        logger.debug(f"cleared {exercise} for aliases into {unaliased}")
+        return unaliased
+
     @staticmethod
-    def _exercise_from_string(exercise_str):
-        logger.debug(f"Parsing exercise from {exercise_str}")
+    def _exercise_from_string(exercise: str) -> tuple[str, list]:
+        exercise = Exercise._exercise_sub_aliases(exercise)
+        logger.debug(f"Parsing exercise from {exercise}")
         modifier_schemes = (
-            re.compile(r' w/(?P<with>[a-zA-Z0-9_\']+)'),  # 'with x',
-            re.compile(r' t/(?P<tempo>\d{4})'),  # 'tempo XXXX',
-            re.compile(r' wo/(?P<without>[a-zA-Z0-9_\']+)'),  # 'without x',
-            re.compile(r' p/(?P<pattern>[a-zA-z0-9_\']+)'),  # 'movement patter mod'
+            (re.compile(r' w/(?P<with>[a-zA-Z0-9_\']+)'), 'with'),    # 'with x',
+            (re.compile(r' t/(?P<tempo>\d{4})'), 'tempo'),    # 'tempo XXXX',
+            (re.compile(r' wo/(?P<without>[a-zA-Z0-9_\']+)'),
+             'without'),    # 'without x',
+            (re.compile(r' p/(?P<pattern>[a-zA-z0-9_\']+)'),
+             'pattern'),    # 'movement patter mod'
         )
-        name = exercise_str
-        modifiers = [pattern.findall(name) for pattern in modifier_schemes]
+        modifiers = {
+            name: pattern.findall(exercise)
+            for pattern, name in modifier_schemes
+        }
         logging.debug(f"Modifiers: {modifiers}")
         # TODO normal data structure for modifier, eg dict
-        for modifier in modifiers:
+        for modifier in modifiers.values():
             for modifier_name in modifier:  # Remove modifiers from name
-                name = re.sub(fr" \w+/{modifier_name}(?: |$)", " ", name)
+                exercise = re.sub(fr" \w+/{modifier_name}(?: |$)", " ", exercise)
         # why was there rstrip instead of strip()? It should work
-        return name.strip(), modifiers
+        return exercise.strip(), modifiers
 
     def _sets_done_from_string(self, sets_str):
         logger.debug(f"-----------Parsing sets done from {sets_str}")
@@ -466,6 +474,8 @@ class Exercise:
              f"{Back.RED}{'ERR' if s.type == SetType.ERROR else ''}{Back.RESET}")
             for s in self.sets_planned
         ]
+        modifiers = ' '.join(
+            [k + ':' + ','.join(v) for k, v in self.modifiers.items() if v])
 
         e1rm = f'{Fore.MAGENTA} e1rm: {self.e1rm}{Fore.RESET}' if self.e1rm else ''
         vol_planned = (f'{Fore.GREEN} vol_p: '
@@ -481,7 +491,7 @@ class Exercise:
               f'TS: {round(self.stress_index_done["ts"], 1)}{Fore.RESET}'
               if self.stress_index_done['ts'] != 0.0 else '')
         ret = (
-            f'{Fore.RED}{self.name}{Fore.RESET} | p:{inol}{vol_planned} '
+            f'{Fore.RED}{self.name} {modifiers}{Fore.RESET} | p:{inol}{vol_planned} '
             f'd:{e1rm}{vol_done}{vol_done_relative}{si}\n'
             f'\t\t{" ".join(sets_planned)} {Back.LIGHTBLUE_EX}=>{Back.RESET} '
             f'{" ".join(sets_done)} '
