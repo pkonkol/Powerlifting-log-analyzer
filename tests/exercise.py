@@ -45,10 +45,6 @@ class SetsDoneParsing(unittest.TestCase):
             Set(ST.WEIGHT, 10, Weight(20, WU.KG), None),
             Set(ST.WEIGHT, 10, Weight(20, WU.KG), None)
         ]),
-        ('2x12@15kg', [
-            Set(ST.WEIGHT, 12, Weight(15, WU.KG), None),
-            Set(ST.WEIGHT, 12, Weight(15, WU.KG), None)
-        ]),
         ('2x8x30kg', [
             Set(ST.WEIGHT, 8, Weight(30, WU.KG), None),
             Set(ST.WEIGHT, 8, Weight(30, WU.KG), None)
@@ -206,7 +202,12 @@ class SetsPlannedParsing(unittest.TestCase):
 
 
 class ExerciseNameParsing(unittest.TestCase):
-    correct_results = (('SQ w/wraps', ('SQ', [['wraps'], [], [], []])), )
+    correct_results = (('SQ w/wraps', ('SQ', {
+        'with': ['wraps'],
+        'pattern': [],
+        'tempo': [],
+        'without': []
+    })), )
 
     def test_exercise_name_parsing(self):
         logger.info(f"Starting tests_exercise_from_string {'-'*30}")

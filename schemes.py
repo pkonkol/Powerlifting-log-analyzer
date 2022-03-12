@@ -3,7 +3,7 @@ from enum import Enum
 
 RPE_SCHEME = (r"(?P<rpe>(?:[1-9](?:,|\.)[5])|(?:[1-9]|10)|(?:9\.3|9\.6))")
 RPE_MULTISET_SCHEME = fr"(?P<multi_rpe>(?:@{RPE_SCHEME}){{2,}})"
-WEIGHT_SCHEME = (r"(?:(?P<weight>[0-9]+(?:\.[0-9]{1,3})?)"
+WEIGHT_SCHEME = (r"(?:(?P<weight>[0-9]+(?:[.,][0-9]{1,3})?)"
                  r"(?i)(?P<unit>kg|lbs|bw)?|(?P<bw>BW))")
 WEIGHT_NO_GUESS_SCHEME = (
     r"(?:(?P<weight>[0-9]+(?:\.[0-9]{1,3})?)"

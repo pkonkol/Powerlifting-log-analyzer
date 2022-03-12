@@ -16,21 +16,6 @@
         "without":{},
         "tempo":{}
     },
-    "exercise_aliases": [
-          ["Squat", "SQ"],
-          ["Comp SQ", "SQ p/comp"],
-          ["Paused SQ", "SQ p/paused"],
-          ["Speed SQ", "SQ p/speed"],
-          ["SSB SQ", "SQ w/ssb"],
-          ["Bench", "BP"],
-          ["Comp BP", "BP p/comp"],
-          ["Paused BP", "BP p/paused"],
-          ["Speed BP", "BP p/speed"],
-          ["Deadlift", "DL"],
-          ["Comp DL", "DL p/comp"],
-          ["SLDL", "DL p/stiffleg"],
-          ["Seated OHP", "OHP p/comp"]
-    ],
     "exercises": {
            "SQ" : {
                 "movement_patterns": { "2" : "heavy", "8" : "medium"},
@@ -73,6 +58,43 @@
            }
 
     },
+    "exercise_aliases": [
+          ["Squat", "SQ"],
+          ["Comp SQ", "SQ p/comp"],
+          ["Paused SQ", "SQ p/paused"],
+          ["Speed SQ", "SQ p/speed"],
+          ["SSB SQ", "SQ w/ssb"],
+          ["Pin SQ", "SQ p/pin"],
+          ["Bulgarian split SQ", "SQ p/bulgarian"],
+          ["Front SQ", "SQ p/front"],
+          ["Zercher SQ", "SQ p/zercher"],
+          ["Overhead SQ", "SQ p/overhead"],
+
+          ["Bench", "BP"],
+          ["Comp BP", "BP p/comp"],
+          ["Paused BP", "BP p/paused"],
+          ["Speed BP", "BP p/speed"],
+          ["CGBP", "BP p/closegrip"],
+          ["DB BP", "BP w/dumbells"],
+          ["Pin Press", "BP p/pin"],
+          ["Football bar BP", "BP w/football_bar"],
+          ["TG BP", "BP p/touch_and_go"],
+          ["[0-9]ct BP", "BP p/count"],
+
+          ["Deadlift", "DL"],
+          ["Comp DL", "DL p/comp"],
+          ["SLDL", "DL p/stiffleg"],
+          ["Axle bar DL", "DL w/axle_bar"],
+          ["TG DL", "DL p/touch_and_go"],
+
+          ["Seated OHP", "OHP p/seated"],
+          ["DB OHP", "OHP w/dumbells"],
+
+          ["Pendlay row", "row p/pendlay"],
+          ["Woolam row", "row p/woolam"],
+          ["Seal row", "row p/seal"],
+          ["Crocodiles", "row p/DB p/kroc"]
+    ],
     "rpe_percentage_chart" :{
           "10.0" : [100, 95.5, 92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 70.7, 68.0],
           "9.6" : [97.8, 93.9, 90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.3, 69.4, 66.7],
