@@ -152,7 +152,7 @@ class Exercise:
     def _parse_modifiers(input: str) -> tuple[str, dict[str, list[str]]]:
         modifier_schemes = (
             (re.compile(r' w/(?P<with>[a-zA-Z0-9_\']+)'), 'with'),    # 'with x',
-            (re.compile(r' t/(?P<tempo>\d{4})'), 'tempo'),    # 'tempo XXXX',
+            (re.compile(r' t/(?P<tempo>[0-9xX]{4})'), 'tempo'),    # 'tempo XXXX',
             (re.compile(r' wo/(?P<without>[a-zA-Z0-9_\']+)'),
              'without'),    # 'without x',
             (re.compile(r' p/(?P<pattern>[a-zA-z0-9_\']+)'),
