@@ -131,6 +131,7 @@ class Exercise:
             self._sets_done_from_string(second_col_str))
         self._sets_done_connect_relative_weight()
 
+    @staticmethod
     def _exercise_sub_aliases(exercise: str) -> str:
         """Change exercise aliases to exercise basename with modifier """
         unaliased = exercise
@@ -140,9 +141,15 @@ class Exercise:
         return unaliased
 
     @staticmethod
-    def _exercise_from_string(exercise: str) -> tuple[str, list]:
+    def _exercise_from_string(exercise: str) -> tuple[str, dict[str, list[str]]]:
         exercise = Exercise._exercise_sub_aliases(exercise)
         logger.debug(f"Parsing exercise from {exercise}")
+        # why was there rstrip instead of strip()? It should work
+        exercise, modifiers = Exercise._parse_modifiers(exercise)
+        return exercise.strip(), modifiers
+
+    @staticmethod
+    def _parse_modifiers(input: str) -> tuple[str, dict[str, list[str]]]:
         modifier_schemes = (
             (re.compile(r' w/(?P<with>[a-zA-Z0-9_\']+)'), 'with'),    # 'with x',
             (re.compile(r' t/(?P<tempo>\d{4})'), 'tempo'),    # 'tempo XXXX',
@@ -152,19 +159,21 @@ class Exercise:
              'pattern'),    # 'movement patter mod'
         )
         modifiers = {
-            name: pattern.findall(exercise)
+            name: pattern.findall(input)
             for pattern, name in modifier_schemes
         }
         logging.debug(f"Modifiers: {modifiers}")
         # TODO normal data structure for modifier, eg dict
         for modifier in modifiers.values():
             for modifier_name in modifier:  # Remove modifiers from name
-                exercise = re.sub(fr" \w+/{modifier_name}(?: |$)", " ", exercise)
-        # why was there rstrip instead of strip()? It should work
-        return exercise.strip(), modifiers
+                input = re.sub(fr" \w+/{modifier_name}(?: |$)", " ", input)
+        return input, modifiers
 
     def _sets_done_from_string(self, sets_str):
         logger.debug(f"-----------Parsing sets done from {sets_str}")
+        sets_str, modifiers = Exercise._parse_modifiers(sets_str)
+        # TODO extend self.modifiers with found ones
+        logger.debug(f'Found done_modifiers:{modifiers}')
         start_time, sets_str, end_time = (lambda m: (
             m["start"],
             m["sets"],
