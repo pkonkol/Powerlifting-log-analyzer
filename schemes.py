@@ -33,9 +33,9 @@ SCHEMES_PLANNED = (
     (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$"),
      SetType.LOAD_DROP),  # That one is used all the time
     # 5x5@90% SETS of REPS at PERCENTAGE of previous set (top set)
-    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%RM$"),
+    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%1?RM$"),
      SetType.PERCENT_1RM),    # 5x5@90%RM SETS of REPS at PERCENTAGE of 1RM
-    (re.compile(fr"^{PERCENTAGE_SCHEME}%@{RPE_SCHEME}$"),
+    (re.compile(fr"^{PERCENTAGE_SCHEME}%(1RM|RM)?@{RPE_SCHEME}$"),
      SetType.PERCENT_1RM),  # 80%@8 PERCENTAGE at RPE
     (re.compile(fr"^x{REPS_SCHEME}{RPE_MULTISET_SCHEME}$"),
      SetType.RPE),  # x5@8@9 REPS at RPE multiple #needs furhter processing
