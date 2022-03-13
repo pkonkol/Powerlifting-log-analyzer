@@ -55,6 +55,7 @@ class Exercise:
         self.stress_index_done = self.get_stress_index_done()
         self.inol = self.inol_planned()
         self.vol_planned = self.volume_planned()
+        self.number_lifts = self.get_number_lifts()
 
         if self.done:
             self.e1rm = self.get_e1rm()
@@ -384,8 +385,9 @@ class Exercise:
 
     def _sets_done_connect_relative_weight(self):
         """
-        If set with type LOAD_DROP (TODO change it) found in sets_done then
+        If set with type LOAD_DROP (TODO change this name) found in sets_done then
         set it's weight to first weighted set before it.
+        Used for schemes like x5@9 and x5@7@8 when previous set was weighted.
         """
         for i, set_done in enumerate(self.sets_done):
             if set_done.type != SetType.LOAD_DROP:
@@ -457,6 +459,9 @@ class Exercise:
                 vol += s.reps * s.weight.value
         return vol
 
+    def get_number_lifts(self):
+        return sum([0] + [s.reps for s in self.sets_done if s.reps])
+
     def __repr__(self):
         return f"{self.name}"
 
@@ -491,6 +496,7 @@ class Exercise:
                        f'{self.vol_planned}%{Fore.RESET}') if self.vol_planned else ''
         vol_done = (f'{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
                     if self.vol_done else '')
+        number_lifts = f' nl: {self.number_lifts} '
         vol_done_relative = (
             f' {Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
             if self.vol_done and self.e1rm else '')
@@ -501,7 +507,7 @@ class Exercise:
               if self.stress_index_done['ts'] != 0.0 else '')
         ret = (
             f'{Fore.RED}{self.name} {modifiers}{Fore.RESET} | p:{inol}{vol_planned} '
-            f'd:{e1rm}{vol_done}{vol_done_relative}{si}\n'
+            f'd:{e1rm}{vol_done}{vol_done_relative}{number_lifts}{si}\n'
             f'\t\t{" ".join(sets_planned)} {Back.LIGHTBLUE_EX}=>{Back.RESET} '
             f'{" ".join(sets_done)} '
         )
@@ -544,10 +550,17 @@ class Microcycle:
         for s in self.sessions:
             for e in s.exercises:
                 if e.name not in ret.keys():
-                    if not e.inol and not e.stress_index_done['cs']:
+                    if not e.inol and not e.stress_index_done['ts']:
                         continue
-                    ret[e.name] = {'inol': 0.0, 'cs': 0.0, 'ps': 0.0, 'ts': 0.0}
+                    ret[e.name] = {
+                        'inol': 0.0,
+                        'nl': 0,
+                        'cs': 0.0,
+                        'ps': 0.0,
+                        'ts': 0.0
+                    }
                 ret[e.name]['inol'] += e.inol
+                ret[e.name]['nl'] += e.number_lifts
                 ret[e.name]['cs'] += e.stress_index_done['cs']
                 ret[e.name]['ps'] += e.stress_index_done['ps']
                 ret[e.name]['ts'] += e.stress_index_done['ts']

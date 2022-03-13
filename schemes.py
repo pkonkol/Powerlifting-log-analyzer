@@ -30,7 +30,7 @@ class SetType(Enum):    # Likely TODO split this into planned and done
 
 SCHEMES_PLANNED = (
     (re.compile(fr"^x{REPS_SCHEME}@{RPE_SCHEME}$"), SetType.RPE),    # x5@9 REPS at RPE
-    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%$"),
+    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}[@V]{PERCENTAGE_SCHEME}%$"),
      SetType.LOAD_DROP),  # That one is used all the time
     # 5x5@90% SETS of REPS at PERCENTAGE of previous set (top set)
     (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}@{PERCENTAGE_SCHEME}%1?RM$"),
@@ -45,10 +45,8 @@ SCHEMES_PLANNED = (
      SetType.RPE),    # 3x@9 number of SETS at RPE
     (re.compile(fr"^{PERCENTAGE_SCHEME}%x{REPS_SCHEME}$"),    # 80%x5 REPS at %1RM
      SetType.PERCENT_1RM,),
-    (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}V{PERCENTAGE_SCHEME}%$"),
-     SetType.LOAD_DROP),  # 3x3V90% SETS of REPS at PERCENTAGE may TODO remove
     (re.compile(fr"^x{REPS_SCHEME}\$@{RPE_SCHEME}$"),
-     SetType.RPE_RAMP),  # 5$@9
+     SetType.RPE_RAMP),  # x5$@9
     (re.compile(fr"^{SETS_SCHEME}x{REPS_SCHEME}$"),
      SetType.DONE),   # 3x8 SETS of REPS starting at RPE,
     (re.compile(fr"^x{REPS_SCHEME}@{RPE_SCHEME}\-{PERCENTAGE_SCHEME}%$"),
