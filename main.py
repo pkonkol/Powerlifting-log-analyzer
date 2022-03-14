@@ -10,8 +10,9 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import (calculate_e1rm, calculate_inol, get_exercise_aliases,
-                   get_percentage, get_stress_index)
+from utils import (calculate_e1rm, calculate_inol, get_central_exertion_load,
+                   get_exercise_aliases, get_percentage,
+                   get_peripheral_exertion_load, get_stress_index)
 
 parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
 parser.add_argument('--spreadsheet', action='store', type=str,
@@ -52,19 +53,13 @@ class Exercise:
         self._workout_from_string(planned_str, done_str)
         self.notes = notes
 
+        self.e1rm = self.get_e1rm()
+        self.vol_done = self.volume_done()
         self.stress_index_done = self.get_stress_index_done()
         self.inol = self.inol_planned()
         self.vol_planned = self.volume_planned()
         self.number_lifts = self.get_number_lifts()
-
-        if self.done:
-            self.e1rm = self.get_e1rm()
-            self.vol_done = self.volume_done()
-        else:
-            self.e1rm = 0
-            # self.vol_planned = 0
-            self.vol_done = 0
-            # self.inol = 0
+        self.exl = self.get_exertion_load()
 
     def get_e1rm(self):
         # TMP fix, TODO if done there are always sets (fails on superset)
@@ -459,6 +454,21 @@ class Exercise:
                 vol += s.reps * s.weight.value
         return vol
 
+    def get_exertion_load(self):
+        logger.debug(f'calculating exertion load for {self.name}')
+        exl = {'CXL': 0.0, 'PXL': 0.0, 'rCXL': 0.0, 'rPXL': 0.0}
+        for s in self.sets_done:
+            if not(s.reps and s.rpe and s.weight.value):
+                continue
+            exl['CXL'] += get_central_exertion_load(s.reps, s.rpe, s.weight.value)
+            exl['PXL'] += get_peripheral_exertion_load(s.reps, s.rpe, s.weight.value)
+        exl['rCXL'] = (exl['CXL'] / self.e1rm) if self.e1rm else 0
+        exl['rPXL'] = (exl['PXL'] / self.e1rm) if self.e1rm else 0
+        for k in exl.keys():
+            exl[k] = round(exl[k], 1)
+        logger.debug(f"exl is {exl}")
+        return exl
+
     def get_number_lifts(self):
         return sum([0] + [s.reps for s in self.sets_done if s.reps])
 
@@ -505,9 +515,14 @@ class Exercise:
               f'PS: {round(self.stress_index_done["ps"], 1)} '
               f'TS: {round(self.stress_index_done["ts"], 1)}{Fore.RESET}'
               if self.stress_index_done['ts'] != 0.0 else '')
+        exl = (f' {Fore.LIGHTYELLOW_EX}CXL: {self.exl["CXL"]}'
+               f' PXL: {self.exl["PXL"]}{Fore.RESET}')
+        rexl = (f' {Fore.BLUE}rCXL: {self.exl["rCXL"]}'
+                f' rPXL: {self.exl["rPXL"]}{Fore.RESET}'
+                if self.e1rm else '')
         ret = (
             f'{Fore.RED}{self.name} {modifiers}{Fore.RESET} | p:{inol}{vol_planned} '
-            f'd:{e1rm}{vol_done}{vol_done_relative}{number_lifts}{si}\n'
+            f'd:{e1rm}{vol_done}{vol_done_relative}{number_lifts}{si}{exl}{rexl}\n'
             f'\t\t{" ".join(sets_planned)} {Back.LIGHTBLUE_EX}=>{Back.RESET} '
             f'{" ".join(sets_done)} '
         )
@@ -537,15 +552,15 @@ class Microcycle:
         self.name = name
 
     def __str__(self):
-        e = self._get_exercise_analysis()
-        exercise_analysis_str = '\n\t'.join(f'{k:<20}' + str(v) for k, v in e.items())
+        e = self._get_exercises_analysis()
+        exercises_analysis_str = '\n\t'.join(f'{k:<20}' + str(v) for k, v in e.items())
         ret = (f"{Back.GREEN}Microcycle: {self.name}\n"
-               f"Summary:\n\t{exercise_analysis_str}{Back.RESET}\n")
+               f"Summary:\n\t{exercises_analysis_str}{Back.RESET}\n")
         for session in self.sessions:
             ret += str(session)
         return ret + "\n"
 
-    def _get_exercise_analysis(self):
+    def _get_exercises_analysis(self):
         ret = {}
         for s in self.sessions:
             for e in s.exercises:

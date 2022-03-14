@@ -1,4 +1,5 @@
 import json
+import math
 
 DATASETS = 'datasets.json'
 with open(DATASETS, 'r') as ds:
@@ -49,6 +50,16 @@ def get_percentage(reps: float, rpe: float):
     return DATA['rpe_percentage_chart'][str(rpe)][int(reps - 1)]
 
 
+def get_rpe(reps: float, percentage: float) -> float:
+    """
+    Finds first RPE for given rep range that's lower than percentage param
+    """
+    for i in DATA['rpe_percentage_chart']:
+        if i[reps - 1] < percentage:
+            return i[reps - 1]
+    return 0.0
+
+
 def calculate_inol(reps, intensity):
     return reps / (100.01 - intensity)
 
@@ -83,6 +94,33 @@ def get_old_stress_index(rpe: float) -> float:
 
 def get_exercise_aliases():
     return DATA["exercise_aliases"]
+
+
+def rpe_to_rir(rpe: float) -> float:
+    x = {
+        10: 0, 9.6: 0.3, 9.5: 0.5, 9.3: 0.6, 9: 1, 8.5: 1.5,
+        8: 2, 7.5: 3, 7: 4, 6.5: 5, 6: 7, 5.5: 9, 5: 12
+    }
+    return x.get(rpe, 0)
+
+
+def get_exertion_load_for_rep(rep: int) -> float:
+    return math.pow(math.e, -0.215 * rep)
+
+
+def get_exertion_load_for_reps_rpe(reps: int, rpe: float) -> float:
+    # TODO allow range to start from a 0.5 rpe, then go by ints
+    rir = math.ceil(rpe_to_rir(rpe))
+    return sum((math.pow(math.e, -0.215 * x)
+                for x in range(rir, rir + reps, 1)))
+
+
+def get_central_exertion_load(reps: int, rpe: float, weight: float) -> float:
+    return get_exertion_load_for_reps_rpe(reps, rpe) * weight / reps
+
+
+def get_peripheral_exertion_load(reps: int, rpe: float, weight: float) -> float:
+    return get_exertion_load_for_reps_rpe(reps, rpe) * weight
 
 
 # def calculate_plate_order(available_plates: Counter, bar_weight: float,
