@@ -19,6 +19,8 @@ parser.add_argument('--spreadsheet', action='store', type=str,
                     help='Your google spreadsheet\'s name')
 parser.add_argument('--worksheet', action='store', type=str,
                     help='The tab in the spreasheet')
+parser.add_argument('--output', action='store', type=str,
+                    help='One of full|analytics', default='full')
 
 colorama.init()
 
@@ -551,16 +553,19 @@ class Microcycle:
         self.sessions = sessions
         self.name = name
 
-    def __str__(self):
-        e = self._get_exercises_analysis()
+    def print_analytics(self):
+        e = self._get_analysis()
         exercises_analysis_str = '\n\t'.join(f'{k:<20}' + str(v) for k, v in e.items())
-        ret = (f"{Back.GREEN}Microcycle: {self.name}\n"
-               f"Summary:\n\t{exercises_analysis_str}{Back.RESET}\n")
+        return (f"{Back.GREEN}Microcycle: {self.name}\n"
+                f"Summary:\n\t{exercises_analysis_str}{Back.RESET}\n")
+
+    def __str__(self):
+        ret = self.print_analytics()
         for session in self.sessions:
             ret += str(session)
         return ret + "\n"
 
-    def _get_exercises_analysis(self):
+    def _get_analysis(self):
         ret = {}
         for s in self.sessions:
             for e in s.exercises:
@@ -582,7 +587,6 @@ class Microcycle:
         for e in ret:
             for k in ret[e]:
                 ret[e][k] = round(ret[e][k], 1)
-
         return ret
 
 
@@ -597,6 +601,13 @@ class Mesocycle:
                f"{Back.RESET}{Fore.RESET}\n")
         for microcycle in self.microcycles:
             ret += str(microcycle)
+        return ret + "\n"
+
+    def print_analytics(self):
+        ret = (f"{Fore.BLACK}{Back.YELLOW}Mesocycle: {self.name}"
+               f"{Back.RESET}{Fore.RESET}\n")
+        for microcycle in self.microcycles:
+            ret += microcycle.print_analytics()
         return ret + "\n"
 
 
@@ -680,6 +691,9 @@ if __name__ == "__main__":
         mesocycles.append(get_mesocycle(block, last_row))
     with open('output', 'w') as f:
         for m in mesocycles:
-            s = str(m)
+            if args.output == 'analytics':
+                s = m.print_analytics()
+            else:
+                s = str(m)
             print(s)
             f.write(s)
