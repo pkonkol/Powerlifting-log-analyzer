@@ -10,14 +10,17 @@ import gspread
 from colorama import Back, Fore
 
 from schemes import SCHEMES_DONE, SCHEMES_PLANNED, SetType
-from utils import (calculate_e1rm, calculate_inol, get_exercise_aliases,
-                   get_percentage, get_stress_index)
+from utils import (calculate_e1rm, calculate_inol, get_central_exertion_load,
+                   get_exercise_aliases, get_percentage,
+                   get_peripheral_exertion_load, get_stress_index)
 
 parser = argparse.ArgumentParser(description="powerlifting-log-analyzer")
 parser.add_argument('--spreadsheet', action='store', type=str,
                     help='Your google spreadsheet\'s name')
 parser.add_argument('--worksheet', action='store', type=str,
                     help='The tab in the spreasheet')
+parser.add_argument('--output', action='store', type=str,
+                    help='One of full|analytics', default='full')
 
 colorama.init()
 
@@ -52,18 +55,13 @@ class Exercise:
         self._workout_from_string(planned_str, done_str)
         self.notes = notes
 
+        self.e1rm = self.get_e1rm()
+        self.vol_done = self.volume_done()
         self.stress_index_done = self.get_stress_index_done()
         self.inol = self.inol_planned()
         self.vol_planned = self.volume_planned()
-
-        if self.done:
-            self.e1rm = self.get_e1rm()
-            self.vol_done = self.volume_done()
-        else:
-            self.e1rm = 0
-            # self.vol_planned = 0
-            self.vol_done = 0
-            # self.inol = 0
+        self.number_lifts = self.get_number_lifts()
+        self.exl = self.get_exertion_load()
 
     def get_e1rm(self):
         # TMP fix, TODO if done there are always sets (fails on superset)
@@ -384,8 +382,9 @@ class Exercise:
 
     def _sets_done_connect_relative_weight(self):
         """
-        If set with type LOAD_DROP (TODO change it) found in sets_done then
+        If set with type LOAD_DROP (TODO change this name) found in sets_done then
         set it's weight to first weighted set before it.
+        Used for schemes like x5@9 and x5@7@8 when previous set was weighted.
         """
         for i, set_done in enumerate(self.sets_done):
             if set_done.type != SetType.LOAD_DROP:
@@ -457,6 +456,24 @@ class Exercise:
                 vol += s.reps * s.weight.value
         return vol
 
+    def get_exertion_load(self):
+        logger.debug(f'calculating exertion load for {self.name}')
+        exl = {'CXL': 0.0, 'PXL': 0.0, 'rCXL': 0.0, 'rPXL': 0.0}
+        for s in self.sets_done:
+            if not(s.reps and s.rpe and s.weight.value):
+                continue
+            exl['CXL'] += get_central_exertion_load(s.reps, s.rpe, s.weight.value)
+            exl['PXL'] += get_peripheral_exertion_load(s.reps, s.rpe, s.weight.value)
+        exl['rCXL'] = (exl['CXL'] / self.e1rm) if self.e1rm else 0
+        exl['rPXL'] = (exl['PXL'] / self.e1rm) if self.e1rm else 0
+        for k in exl.keys():
+            exl[k] = round(exl[k], 1)
+        logger.debug(f"exl is {exl}")
+        return exl
+
+    def get_number_lifts(self):
+        return sum([0] + [s.reps for s in self.sets_done if s.reps])
+
     def __repr__(self):
         return f"{self.name}"
 
@@ -491,6 +508,7 @@ class Exercise:
                        f'{self.vol_planned}%{Fore.RESET}') if self.vol_planned else ''
         vol_done = (f'{Fore.GREEN} vol_d: {self.vol_done}kg{Fore.RESET}'
                     if self.vol_done else '')
+        number_lifts = f' nl: {self.number_lifts} '
         vol_done_relative = (
             f' {Fore.RED} vol_d%: {round(100*self.vol_done/self.e1rm, 1)}%{Fore.RESET}'
             if self.vol_done and self.e1rm else '')
@@ -499,9 +517,14 @@ class Exercise:
               f'PS: {round(self.stress_index_done["ps"], 1)} '
               f'TS: {round(self.stress_index_done["ts"], 1)}{Fore.RESET}'
               if self.stress_index_done['ts'] != 0.0 else '')
+        exl = (f' {Fore.LIGHTYELLOW_EX}CXL: {self.exl["CXL"]}'
+               f' PXL: {self.exl["PXL"]}{Fore.RESET}')
+        rexl = (f' {Fore.BLUE}rCXL: {self.exl["rCXL"]}'
+                f' rPXL: {self.exl["rPXL"]}{Fore.RESET}'
+                if self.e1rm else '')
         ret = (
             f'{Fore.RED}{self.name} {modifiers}{Fore.RESET} | p:{inol}{vol_planned} '
-            f'd:{e1rm}{vol_done}{vol_done_relative}{si}\n'
+            f'd:{e1rm}{vol_done}{vol_done_relative}{number_lifts}{si}{exl}{rexl}\n'
             f'\t\t{" ".join(sets_planned)} {Back.LIGHTBLUE_EX}=>{Back.RESET} '
             f'{" ".join(sets_done)} '
         )
@@ -530,31 +553,40 @@ class Microcycle:
         self.sessions = sessions
         self.name = name
 
+    def print_analytics(self):
+        e = self._get_analysis()
+        exercises_analysis_str = '\n\t'.join(f'{k:<20}' + str(v) for k, v in e.items())
+        return (f"{Back.GREEN}Microcycle: {self.name}\n"
+                f"Summary:\n\t{exercises_analysis_str}{Back.RESET}\n")
+
     def __str__(self):
-        e = self._get_exercise_analysis()
-        exercise_analysis_str = '\n\t'.join(f'{k:<20}' + str(v) for k, v in e.items())
-        ret = (f"{Back.GREEN}Microcycle: {self.name}\n"
-               f"Summary:\n\t{exercise_analysis_str}{Back.RESET}\n")
+        ret = self.print_analytics()
         for session in self.sessions:
             ret += str(session)
         return ret + "\n"
 
-    def _get_exercise_analysis(self):
+    def _get_analysis(self):
         ret = {}
         for s in self.sessions:
             for e in s.exercises:
                 if e.name not in ret.keys():
-                    if not e.inol and not e.stress_index_done['cs']:
+                    if not e.inol and not e.stress_index_done['ts']:
                         continue
-                    ret[e.name] = {'inol': 0.0, 'cs': 0.0, 'ps': 0.0, 'ts': 0.0}
+                    ret[e.name] = {
+                        'inol': 0.0,
+                        'nl': 0,
+                        'cs': 0.0,
+                        'ps': 0.0,
+                        'ts': 0.0
+                    }
                 ret[e.name]['inol'] += e.inol
+                ret[e.name]['nl'] += e.number_lifts
                 ret[e.name]['cs'] += e.stress_index_done['cs']
                 ret[e.name]['ps'] += e.stress_index_done['ps']
                 ret[e.name]['ts'] += e.stress_index_done['ts']
         for e in ret:
             for k in ret[e]:
                 ret[e][k] = round(ret[e][k], 1)
-
         return ret
 
 
@@ -569,6 +601,13 @@ class Mesocycle:
                f"{Back.RESET}{Fore.RESET}\n")
         for microcycle in self.microcycles:
             ret += str(microcycle)
+        return ret + "\n"
+
+    def print_analytics(self):
+        ret = (f"{Fore.BLACK}{Back.YELLOW}Mesocycle: {self.name}"
+               f"{Back.RESET}{Fore.RESET}\n")
+        for microcycle in self.microcycles:
+            ret += microcycle.print_analytics()
         return ret + "\n"
 
 
@@ -652,6 +691,9 @@ if __name__ == "__main__":
         mesocycles.append(get_mesocycle(block, last_row))
     with open('output', 'w') as f:
         for m in mesocycles:
-            s = str(m)
+            if args.output == 'analytics':
+                s = m.print_analytics()
+            else:
+                s = str(m)
             print(s)
             f.write(s)
